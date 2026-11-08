@@ -80,6 +80,7 @@ const OWN_PREFIX: &[&str] = &[
     "/device-info",
     "/router/qci",
     "/tools/cpu",
+    "/tools/agent",
     "/changes",
     "/usb",
     "/bandlock",

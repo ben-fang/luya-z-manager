@@ -164,8 +164,8 @@ ensure_key() { # ssh 组件要把这把公钥装进设备的 authorized_keys
 
 # ── 通道：只用用户自己已经配好的 SSH ────────────────────────────────────────
 pick_channel() {
-  [ -f "$SSH_KEY" ] || fail "$(tx "找不到私钥 $SSH_KEY。本包只经已经能用的 SSH 登录工作（root@$GATEWAY，端口 $SSH_PORT）；用 SSH_KEY=… 指定你的密钥。SSH 怎么开通不在本项目范围内" "Private key not found: $SSH_KEY. This kit only works over an SSH login that already works (root@$GATEWAY, port $SSH_PORT); point SSH_KEY=... at your key. How you get SSH is outside this project")"
-  ssh_ok || fail "$(tx "SSH 登录不了 root@$GATEWAY:$SSH_PORT（密钥 $SSH_KEY）。本包需要 SSH 已经能用；电脑连着设备吗？代理/VPN 的 TUN 模式要让 $GATEWAY 直连。SSH 怎么开通不在本项目范围内" "Cannot log in over SSH to root@$GATEWAY:$SSH_PORT (key $SSH_KEY). This kit needs SSH to work already; is this computer connected to the device? A proxy/VPN in TUN mode must send $GATEWAY direct. How you get SSH is outside this project")"
+  [ -f "$SSH_KEY" ] || fail "$(tx "找不到私钥 ${SSH_KEY}。本包只经已经能用的 SSH 登录工作（root@${GATEWAY}，端口 ${SSH_PORT}）；用 SSH_KEY=… 指定你的密钥。SSH 怎么开通不在本项目范围内" "Private key not found: $SSH_KEY. This kit only works over an SSH login that already works (root@$GATEWAY, port $SSH_PORT); point SSH_KEY=... at your key. How you get SSH is outside this project")"
+  ssh_ok || fail "$(tx "SSH 登录不了 root@$GATEWAY:${SSH_PORT}（密钥 ${SSH_KEY}）。本包需要 SSH 已经能用；电脑连着设备吗？代理/VPN 的 TUN 模式要让 $GATEWAY 直连。SSH 怎么开通不在本项目范围内" "Cannot log in over SSH to root@$GATEWAY:$SSH_PORT (key $SSH_KEY). This kit needs SSH to work already; is this computer connected to the device? A proxy/VPN in TUN mode must send $GATEWAY direct. How you get SSH is outside this project")"
   CH=ssh; ok "$(tx 'SSH 已经能登录，走 SSH。' 'SSH login works; using SSH.')"
 }
 
@@ -216,33 +216,33 @@ check_device() {
   esac
   build=$(printf '%s' "$iv" | sed -n 's/.*V[0-9.]*\(B[0-9][0-9]*\)$/\1/p')
   [ -n "$model" ] && [ -n "$build" ] || fail "$(tx "认不出固件版本「${iv:-空}」，不装（不是 U60 Pro，或固件太新/太旧）" "Unknown firmware version \"${iv:-empty}\". Not installing (not a U60 Pro, or firmware too new/old)")"
-  info "$(tx "设备：$model，固件 $region $build" "Device: $model, firmware $region $build")"
+  info "$(tx "设备：${model}，固件 $region $build" "Device: $model, firmware $region $build")"
   for c in $COMPONENTS; do
     tried=$((tried + 1))
     st=$(cap_of "$model" "$region" "$build" "$c")
     case "$st" in
-      verified) keep="$keep $c"; ok "$(tx "  $c：实测支持" "  $c: tested")" ;;
+      verified) keep="$keep $c"; ok "$(tx "  ${c}：实测支持" "  $c: tested")" ;;
       code-only)
         if [ "${LUYAZ_ALLOW_UNVERIFIED:-0}" = 1 ]; then
           keep="$keep $c"
-          warn "$(tx "  $c：未经实测（代码里有支持），按 LUYAZ_ALLOW_UNVERIFIED=1 继续" "  $c: not tested (the code supports it); going on because LUYAZ_ALLOW_UNVERIFIED=1")"
+          warn "$(tx "  ${c}：未经实测（代码里有支持），按 LUYAZ_ALLOW_UNVERIFIED=1 继续" "  $c: not tested (the code supports it); going on because LUYAZ_ALLOW_UNVERIFIED=1")"
         else
           skipped=$((skipped + 1))
-          warn "$(tx "  $c：这个型号/固件没在真机上装过，跳过。确认要试就加 LUYAZ_ALLOW_UNVERIFIED=1 再跑；先 ./install.sh backup" "  $c: not tested on this model/firmware; skipped. To try anyway, run again with LUYAZ_ALLOW_UNVERIFIED=1; run ./install.sh backup first")"
+          warn "$(tx "  ${c}：这个型号/固件没在真机上装过，跳过。确认要试就加 LUYAZ_ALLOW_UNVERIFIED=1 再跑；先 ./install.sh backup" "  $c: not tested on this model/firmware; skipped. To try anyway, run again with LUYAZ_ALLOW_UNVERIFIED=1; run ./install.sh backup first")"
         fi ;;
       *) skipped=$((skipped + 1))
-         warn "$(tx "  $c：这个型号/固件不支持（firmware-capabilities.matrix.json），跳过。别为了装它去升级或降级固件" "  $c: not supported on this model/firmware (firmware-capabilities.matrix.json); skipped. Do not upgrade or downgrade the firmware just for this kit")" ;;
+         warn "$(tx "  ${c}：这个型号/固件不支持（firmware-capabilities.matrix.json），跳过。别为了装它去升级或降级固件" "  $c: not supported on this model/firmware (firmware-capabilities.matrix.json); skipped. Do not upgrade or downgrade the firmware just for this kit")" ;;
     esac
   done
   keep=${keep# }
   [ -n "$keep" ] || fail "$(tx "设备 $model / 固件 $region $build 上点名的组件一个都装不了，不装" "None of the picked components can be installed on $model / firmware $region $build. Not installing")"
   COMPONENTS=$keep
   if [ "$skipped" -gt 0 ]; then
-    warn "$(tx "只装：$COMPONENTS（跳过 $skipped 个，共 $tried 个）" "Installing only: $COMPONENTS (skipped $skipped of $tried)")"
+    warn "$(tx "只装：${COMPONENTS}（跳过 $skipped 个，共 $tried 个）" "Installing only: $COMPONENTS (skipped $skipped of $tried)")"
   elif [ "${LUYAZ_ALLOW_UNVERIFIED:-0}" = 1 ] && [ "$(for c in $COMPONENTS; do cap_of "$model" "$region" "$build" "$c"; done | sort -u)" != verified ]; then
-    warn "$(tx "装：$COMPONENTS（含未经实测的）" "Installing: $COMPONENTS (some not tested)")"
+    warn "$(tx "装：${COMPONENTS}（含未经实测的）" "Installing: $COMPONENTS (some not tested)")"
   else
-    ok "$(tx "装：$COMPONENTS（都实测支持）" "Installing: $COMPONENTS (all tested)")"
+    ok "$(tx "装：${COMPONENTS}（都实测支持）" "Installing: $COMPONENTS (all tested)")"
   fi
 }  # check_device
 
@@ -280,7 +280,7 @@ do_backup() {
   # 旁存 sha256（sha256sum -c 认的格式）：restore 先比对它，不符就不恢复
   printf '%s  %s\n' "$(sha256 < "$out")" "$(basename "$out")" > "$out.sha256"
   chmod 600 "$out.sha256"
-  ok "$(tx "配置已备份到 $out（摘要 $(basename "$out").sha256）" "Settings backed up to $out (checksum $(basename "$out").sha256)")"
+  ok "$(tx "配置已备份到 ${out}（摘要 $(basename "$out").sha256）" "Settings backed up to $out (checksum $(basename "$out").sha256)")"
   # 系统文件另存一份（只给人看、升级前留底，restore 不会恢复它们）：rc.local、我们的 init 脚本、
   # dropbear 的 host key 和启动脚本。固件升级会换掉 rc.local 和 /etc/init.d（B31 社区调研 K4）。
   local sys="${out%.tgz}.system.tgz"
@@ -291,7 +291,7 @@ do_backup() {
   chmod 600 "$sys"
   if tar tzf "$sys" 2>/dev/null | grep -qx 'etc/rc.local'; then
     printf '%s  %s\n' "$(sha256 < "$sys")" "$(basename "$sys")" > "$sys.sha256"; chmod 600 "$sys.sha256"
-    ok "$(tx "系统文件（rc.local、init 脚本、SSH host key）另存到 $sys（只留底，restore 不恢复）" "System files (rc.local, init scripts, SSH host key) saved separately to $sys (for reference only; restore does not bring them back)")"
+    ok "$(tx "系统文件（rc.local、init 脚本、SSH host key）另存到 ${sys}（只留底，restore 不恢复）" "System files (rc.local, init scripts, SSH host key) saved separately to $sys (for reference only; restore does not bring them back)")"
   else
     rm -f "$sys"; warn "$(tx 'rc.local、init 脚本、SSH host key 没存下来' 'Could not save rc.local, init scripts, SSH host key')"
   fi
@@ -477,7 +477,7 @@ report_ssh() {
   fi
   warn "$(tx "这台电脑登不上 $GATEWAY:${SSH_PORT}：" "This computer cannot log in to $GATEWAY:${SSH_PORT}:")"
   case "$SSH_WHY" in
-    nokey)    warn "$(tx "  这台电脑上没有私钥 $SSH_KEY。" "  No private key $SSH_KEY on this computer.")" ;;
+    nokey)    warn "$(tx "  这台电脑上没有私钥 ${SSH_KEY}。" "  No private key $SSH_KEY on this computer.")" ;;
     noproc)   warn "$(tx '  设备上 dropbear 进程已经不在了（装机时起来过，之后退出了）：看设备 logread | grep dropbear。' '  dropbear is no longer running on the device (it started during the install, then quit): on the device, see logread | grep dropbear.')" ;;
     nolisten) warn "$(tx "  设备上 dropbear 进程在，但没在 ${SSH_PORT} 端口监听：设备上 netstat -ltn 看看端口被谁占了。" "  dropbear runs on the device but does not listen on port ${SSH_PORT}: on the device, run netstat -ltn to see what holds the port.")" ;;
     refused)  warn "$(tx "  连接被拒绝：连到的不是 U60（GATEWAY 不对？），或代理把 $GATEWAY 接到了别处。" "  Connection refused: that is not the U60 (wrong GATEWAY?), or a proxy sends $GATEWAY somewhere else.")" ;;
@@ -485,7 +485,7 @@ report_ssh() {
     timeout)  warn "$(tx '  连接超时/不可达：电脑和 U60 之间不通（没连 U60 的 Wi-Fi？代理/防火墙挡了？）。' "  Timed out / unreachable: this computer cannot reach the U60 (not on the U60's Wi-Fi? blocked by a proxy/firewall?).")" ;;
     *)        warn "  ${SSH_WHY#other:}" ;;
   esac
-  warn "$(tx "手动再试: ssh -p $SSH_PORT -i $SSH_KEY root@$GATEWAY（rc.local 里的 dropbear 行只在设备上验证能起来后才写）" "Try by hand: ssh -p $SSH_PORT -i $SSH_KEY root@$GATEWAY (the dropbear line goes into rc.local only after it was seen starting on the device)")"
+  warn "$(tx "手动再试: ssh -p $SSH_PORT -i $SSH_KEY root@${GATEWAY}（rc.local 里的 dropbear 行只在设备上验证能起来后才写）" "Try by hand: ssh -p $SSH_PORT -i $SSH_KEY root@$GATEWAY (the dropbear line goes into rc.local only after it was seen starting on the device)")"
 }
 
 # 装了 ssh 且现在能登录时，才谈得上重启验证

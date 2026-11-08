@@ -64,5 +64,5 @@ if command -v jq >/dev/null 2>&1; then
   [ "$(jq '.entries | length' "$HERE/firmware-capabilities.matrix.json")" = "$(grep -c '"model"' "$HERE/firmware-capabilities.matrix.json")" ] \
     || { echo "矩阵每条要单独一行"; bad=$((bad + 1)); }
 fi
-echo "通过 $pass，失败 $bad"
+echo "通过 ${pass}，失败 $bad"
 [ "$bad" = 0 ]

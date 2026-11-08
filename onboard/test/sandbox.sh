@@ -96,6 +96,9 @@ rewrite_paths() {
     -e "s#^CORE_DIR=\${KIT_CORE_DIR:-/data/luyaz/core}#CORE_DIR=$SB/luyaz-core#"
     -e "s#^SCREEN_DIR=\${KIT_SCREEN_DIR:-/data/luyaz/screen}#SCREEN_DIR=$SB/luyaz-screen#"
     -e "s#^WEB_ENV=/data/luyaz/web.env#WEB_ENV=$SB/web.env#"
+    -e "s#^KR=\${KIT_ROOT:-}.*#KR=$SB#"
+    -e "s#\$KR/etc/init.d/#$SB/etc/init.d/#g"
+    -e "s#\$KR/data/luyaz/#$SB/luyaz/#g"
     -e "s#/data/local/tmp/start_dropbear.sh#$SB/start_dropbear.sh#g"
     -e "s#/data/ssh#$SB/ssh#g"
     -e "s#/etc/dropbear#$SB/etc/dropbear#g"
@@ -120,6 +123,8 @@ guard_device_script() {
   local skipped='^(do_admin|do_ui|do_recover|install_scripts|place_recover|recover_put|rc_owner|owners_stop|sentinel_start|kit_record|do_chill|do_status)\(\) \{'
   local real='(^|[^b])/etc/rc\.local|/data/ssh|/data/luyaz|/data/plugins|/etc/init\.d/|put_tree "\$P/esim.tgz" /data/esim|set_update_mode|uci -q (set|commit)| -p 2222|127\.0\.0\.1:9090'
   local allowed='^[0-9]+:(SENT_LINE|LW)=|^[0-9]+:[[:space:]]*\[ -x "/etc/init.d/\$s" \]|svc_running|/etc/init.d/zte_topsw'
+  # Snapshot targets only echo paths; allow the exact sandbox-rooted init list.
+  allowed+='|^[0-9]+:    for s in luyaz-core luyaz-web luyaz-sentinel chill; do echo "/data/local/tmp/kit-sb/etc/init.d/\$s"; done$'
   if grep -n '\${KIT_[A-Z0-9_]*:-/' "$f"; then
     abort "上面这些路径变量没换成沙盒路径（device/install.sh 加了新的 KIT_ 变量？），先更新本脚本"
   fi

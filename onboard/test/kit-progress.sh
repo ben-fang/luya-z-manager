@@ -16,7 +16,8 @@ run() { # <KIT_ID> <在哪个组件失败，空 = 都成功> <组件…>：输�
         export KIT_STATE KIT_LIB_ONLY KIT_ID KIT_MAC_TIME
         . "$ONB/device/install.sh" >/dev/null
         stub() { echo "$1" >> "$T/ran"; [ "$1" != "$_bad" ] || die "stub $1"; }
-        do_ssh() { stub ssh; }; do_admin() { stub admin; }; do_ui() { stub ui; }
+        # web_verify writes its HTTP status to c; it must not become the component name.
+        do_ssh() { stub ssh; }; do_admin() { stub admin; c=422; }; do_ui() { stub ui; }
         do_esim() { stub esim; }; do_chill() { stub chill; }; do_recover() { stub recover; }
         COMPONENTS="$*"
         set -- "$@"

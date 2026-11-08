@@ -832,6 +832,7 @@ for c in "$@"; do   # 按命令行顺序装
         status)  do_status ;;   # 现状
         *)       die "$(tx "不认识的组件: $c" "unknown component: $c")" ;;   # 其他一律拒绝
     esac  # do_status
-    [ "$c" = status ] || prog_done "$c"
+    # Component helpers may use c themselves (web_verify uses it for HTTP status).
+    [ -z "$PROG_C" ] || prog_done "$PROG_C"
 done  # do_status
 [ "$1" = status ] || prog_finish

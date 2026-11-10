@@ -49,6 +49,8 @@ pub struct Activity {
     pub speed: bool,
     /// the 测速 page (its server list)
     pub speed_page: bool,
+    /// the load ladder page
+    pub ladder: bool,
     /// 系统 (the battery estimate)
     pub sys: bool,
     /// 健康与告警
@@ -71,6 +73,7 @@ pub struct Polled {
     pub esim: bool,
     pub speedtest: bool,
     pub servers: bool,
+    pub ladder: bool,
     pub battery: bool,
     pub versions: bool,
     /// 落地 changed
@@ -175,6 +178,15 @@ pub trait Source {
     fn speedtest_start(&mut self, chill: bool, roaming_ok: bool) -> bool;
     fn speedtest_stop(&mut self) -> bool;
     fn speedtest_select_server(&mut self, i: i32);
+    /// answers at once: the request goes out on its own thread (the core looks 3 s first)
+    fn ladder_start(&mut self, busy_ok: bool, roaming_ok: bool);
+    fn ladder_stop(&mut self);
+    /// leave the result screen (a kept run: back to the list)
+    fn ladder_dismiss(&mut self);
+    /// open or close the kept-runs list
+    fn ladder_browse(&mut self, open: bool);
+    /// open kept run `i` of the list
+    fn ladder_open(&mut self, i: usize);
     fn scenario_kick(&mut self);
     fn netinfo_act(&mut self, a: NiAct);
     /// "" = back to automatic

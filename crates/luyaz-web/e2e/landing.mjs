@@ -3,6 +3,7 @@
 // the data since landing; 「收起」 hides it; 390 px no sideways scroll; axe 0. Needs the mock u60d
 // behind luyaz-web. From source/manager:
 //   WEB=http://127.0.0.1:18081 OUT=/tmp/lw-landing crates/luyaz-web/e2e/run.sh landing
+// serve needs LUYAZ_WEB_CHILL_SH=<any existing file> (with --password-file CHILL counts as installed only if /data/chill/chill.sh exists).
 import { chromium } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { mkdirSync } from "node:fs";

@@ -20,6 +20,7 @@ mod place;
 mod power;
 mod refresh;
 mod sms;
+mod ladder;
 mod speed;
 mod system;
 mod usage;
@@ -54,6 +55,8 @@ pub enum Sub {
     Cell,
     Lock,
     Speed,
+    /// 这里撑得住吗: opened from 测速
+    Ladder,
     Chill,
     Esim,
     Perf,
@@ -81,6 +84,7 @@ pub const SUBS: &[Sub] = &[
     Sub::Cell,
     Sub::Lock,
     Sub::Speed,
+    Sub::Ladder,
     Sub::Chill,
     Sub::Esim,
     Sub::Perf,
@@ -108,6 +112,7 @@ fn sub_title(s: Sub) -> &'static str {
         Sub::Cell => n_("小区信息"),
         Sub::Lock => n_("锁频"),
         Sub::Speed => n_("测速"),
+        Sub::Ladder => n_("负载体检"),
         Sub::Chill => "CHILL",
         Sub::ChillNodes => n_("节点"),
         Sub::ChillPairs => n_("规则 → 节点"),
@@ -222,6 +227,7 @@ pub struct Ui {
     pub es: esim::Esim,
     pub ds: dualsim::DualSim,
     pub st: speed::Speed,
+    pub lad: ladder::Ladder,
     pub ts: exit::TsPage,
     pub sg: exit::SigPage,
     pub cp: exit::ChillPage,
@@ -458,6 +464,7 @@ impl Ui {
             Sub::Log => self.op_log_on_open(),
             Sub::LogDetail => self.op_logd_on_open(),
             Sub::Usage => self.usage_paint(),
+            Sub::Ladder => self.ladder_paint(),
             _ => {}
         }
     }
@@ -865,6 +872,7 @@ pub fn create(conf: Conf, launch: Launch, model: Rc<Model>, src: Box<dyn Source>
         es: esim::Esim::default(),
         ds: dualsim::DualSim::default(),
         st: speed::Speed::default(),
+        lad: ladder::Ladder::default(),
         ts: exit::TsPage::default(),
         sg: exit::SigPage::default(),
         cp: exit::ChillPage::default(),
@@ -940,6 +948,8 @@ pub fn create(conf: Conf, launch: Launch, model: Rc<Model>, src: Box<dyn Source>
     u.build_sub_cell(p_cell);
     u.build_sub_lock(p_lock);
     u.build_sub_speed(p_speed);
+    let p_ladder = u.sub_page[Sub::Ladder as usize];
+    u.build_sub_ladder(p_ladder);
     u.build_sub_ts(p_ts);
     let (p_chill, p_nodes, p_pairs) = (u.sub_page[Sub::Chill as usize], u.sub_page[Sub::ChillNodes as usize], u.sub_page[Sub::ChillPairs as usize]);
     u.build_sub_chill(p_chill);

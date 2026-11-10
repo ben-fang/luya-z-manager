@@ -18,6 +18,7 @@ use std::{
 };
 mod chill;
 mod config;
+pub mod ladder;
 pub use config::{Config, LibreServer};
 mod runner;
 mod sys;
@@ -271,9 +272,9 @@ pub struct TestServer {
     #[serde(skip)]
     pub base_url: String, // scheme://host[:port]/path prefix
     #[serde(skip)]
-    ping_url: String,
+    pub(crate) ping_url: String,
     #[serde(skip)]
-    download_url: String,
+    pub(crate) download_url: String,
 }
 #[derive(Clone)]
 struct Failure {
@@ -546,6 +547,18 @@ impl SpeedTest {
         *self.config_error.lock().unwrap() = None;
         drop(current);
         self.config()
+    }
+    /// Where a ladder run may connect: the configured nodes, then Ookla's list.
+    pub fn ladder_candidates(&self) -> Vec<ladder::Node> {
+        let mut list = self.config.lock().unwrap().servers().unwrap_or_default();
+        // Only the nearest Ookla node: picking tries the 3 lowest delays, and in mainland China
+        // more of them would crowd out the public sources, the only ones that carry a load there.
+        if let Ok(ookla) = fetch_servers(&self.servers_url, Duration::from_secs(10)) {
+            list.extend(ookla.into_iter().take(1));
+        }
+        let mut nodes: Vec<ladder::Node> = list.iter().map(ladder::Node::from).collect();
+        nodes.extend(ladder::public_nodes());
+        nodes
     }
     pub fn running_flag(&self) -> Arc<AtomicBool> {
         Arc::clone(&self.running)

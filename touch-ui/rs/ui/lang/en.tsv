@@ -1000,3 +1000,96 @@ CHILL 没在运行	CHILL not running
 已停（可能遇到雷达）	Stopped (radar?)
 暂避雷达	off radar for now
 未开	Off
+负载体检	Load check
+这里撑得住吗	Will this place hold up?
+反应时间	Reaction time
+已停止，这次不算数	Stopped, this run doesn't count
+网络中断，这次不算数	Network dropped, this run doesn't count
+设备过热，已停止	Device overheated, stopped
+读不到温度，已停止	Can't read temperature, stopped
+电量太低，已停止	Battery too low, stopped
+开始漫游了，已停止	Roaming began, stopped
+这次没跑完，不算数	Didn't finish, doesn't count
+空闲基准没量好，这次不下结论	Idle baseline unusable, no conclusion
+此刻上传跑到 %.0f Mbps\n就开始排队	Right now upload\nqueues at %.0f Mbps
+此刻下载跑到 %.0f Mbps\n就开始排队	Right now download\nqueues at %.0f Mbps
+此刻一看影片，反应就变慢	Right now it slows with a video load
+此刻一加上传，反应就变慢	Right now it slows once upload starts
+此刻上传只跑到 %.0f Mbps\n这一步不下结论	Right now upload reached only %.0f Mbps\nNo conclusion here
+此刻下载只跑到 %.0f Mbps\n这一步不下结论	Right now download reached only %.0f Mbps\nNo conclusion here
+有一步没跑成，不下结论	A step failed, no conclusion
+此刻这两档负载下，反应没变慢	Right now neither load slowed it
+这里空闲时就抖	Jittery even when idle
+下载只跑到 %.1f Mbps（目标 %.0f）	Download reached %.1f Mbps (target %.0f)
+上传只跑到 %.1f Mbps（目标 %.0f）	Upload reached %.1f Mbps (target %.0f)
+测试中切了小区，之后的步骤不下结论	The cell changed, no conclusion from there on
+期间有别的流量，数字可能偏悲观	Other traffic ran, numbers may read worse
+这次用了约 %.0f MB	Used about %.0f MB
+第 1 步：先量空闲	Step 1: idle
+第 2 步：看影片的负载	Step 2: video load
+第 3 步：再加上传	Step 3: add upload
+第 4 步：停下看恢复	Step 4: recovery
+正在选测试来源…	Choosing a source…
+还有别的流量，测出来可能偏慢。可以继续，或等它停了再测。	Other traffic is running and may slow the result. Go on, or wait for it to stop.
+设备有点热，凉下来再测。	The device is warm. Test when it cools.
+读不到温度，现在不能开始。	Can't read the temperature, can't start now.
+电量低于 20%，插上电再测。	Battery under 20%. Plug in first.
+连不上核心服务，稍后再试。	Can't reach the core service. Try later.
+正在运行别的测试，等它结束再开始。	Another test is running. Start after it ends.
+漫游中只看轻负载\n约 35 秒\n约用 15 MB\n期间网络会变慢	Roaming: light load only\nAbout 35 s\nAbout 15 MB\nThe network slows meanwhile
+约 75 秒\n约用 270 MB\n期间网络会变慢	About 75 s\nAbout 270 MB\nThe network slows meanwhile
+上次没跑完。	The last run didn't finish.
+正在开始…	Starting…
+再按一次开始	Tap again to start
+仍要开始	Start anyway
+开始	Start
+再按一次：约用 270 MB 漫游流量	Tap again: ~270 MB of roaming data
+仍要完整版	Full run anyway
+正在停止…	Stopping…
+下载 / 上传	Down / up
+已用	Used
+没拿到结果	No result
+看影片的负载	Video load
+再加上传	Plus upload
+%.1f 秒	%.1f s
+没恢复	Not recovered
+停止后恢复	Recovery after load
+只代表此刻。从设备发起，没测 Wi-Fi、通话丢包、CHILL 路径。	This moment only. Sent from the device; Wi-Fi, call loss and CHILL path not tested.
+再测一次	Test again
+此刻一看影片，\n网络就没反应了	Right now a video load\nleaves the network unanswering
+此刻一加上传，\n网络就没反应了	Right now upload\nleaves the network unanswering
+测试时换了基站，\n这次不下结论	The cell changed during the test,\nno conclusion
+空闲时一直有别的流量，\n这次不下结论	Other traffic at idle,\nno conclusion
+空闲时被打断过，已重新量	Idle was disturbed, measured again
+全程反应时间 · 图顶 1000 ms	Reaction time, whole run · top 1000 ms
+速率 · 图顶 %d Mbps	Rate · top %d Mbps
+看影片时 %d%% 的探测 2 秒没回应	Video load: %d%% of probes unanswered for 2 s
+加上传时 %d%% 的探测 2 秒没回应	Plus upload: %d%% of probes unanswered for 2 s
+阶梯|空闲	Idle
+阶梯|看影片	Video
+阶梯|加上传	+Up
+阶梯|恢复	After
+阶梯|下载	Down
+阶梯|上传	Up
+此刻只上传，\n网络就没反应了	Right now upload alone\nleaves the network unanswering
+此刻只上传，反应就变慢	Right now it slows with upload alone
+只上传也变慢：是上传本身在排队	Upload alone slows it too: the upload itself queues
+只上传时没变慢：是上下一起才排队	Upload alone did not slow it: only both together queue
+只上传时 %d%% 的探测 2 秒没回应	Upload only: %d%% of probes unanswered for 2 s
+第 4 步：只上传	Step 4: upload only
+第 5 步：停下看恢复	Step 5: recovery
+只上传	Upload only
+阶梯|只上传	Up
+此刻这三档负载下，反应都没变慢	Right now none of the three loads slowed it
+和 %s 那次比：	Against the run of %s:
+%s %.1f → %.1f 秒	%s %.1f → %.1f s
+%s %.0f → %.0f ms	%s %.0f → %.0f ms
+两次不在同一个小区，差别可能来自小区	The two were on different cells: the change may come from the cell
+以前的结果	Earlier results
+返回列表	Back to the list
+保存的结果	Kept results
+还没有保存的结果	No kept results yet
+轻量	Light
+完整	Full
+设备上保存最近 30 次；管理网页「负载体检记录」能看全部、对比和导出。	The device keeps the last 30. The admin web's Load Check Runs page lists them all, compares and exports.
+返回	Back

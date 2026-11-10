@@ -452,7 +452,7 @@ pub fn detail(e: &Value, l: Lang, stuck: bool, gone: bool) -> Detail {
 
 pub enum Main {
     Loading,
-    /// Never read: 「读不到改动记录 · 数据服务没响应」 + 重试.
+    /// Never read: 「读不到改动记录：数据服务没响应」 + 重试.
     Failed,
     List {
         rows: Vec<Row>,
@@ -473,8 +473,8 @@ impl View {
     }
     pub fn unreadable(&self) -> &'static str {
         self.l.pick(
-            "Can't read change log · data service not responding",
-            "读不到改动记录 · 数据服务没响应",
+            "Can't read change log: data service not responding",
+            "读不到改动记录：数据服务没响应",
         )
     }
 }
@@ -661,8 +661,8 @@ pub fn undo_body(e: &Value, op_id: &str, stuck: bool, l: Lang) -> Result<Value, 
 
 fn stuck_reason(l: Lang) -> &'static str {
     l.pick(
-        "Data service not responding · settings can't be changed for now",
-        "数据服务没响应 · 暂时不能改设置",
+        "Data service not responding, settings can't be changed for now",
+        "数据服务没响应，暂时不能改设置",
     )
 }
 
@@ -724,9 +724,9 @@ pub fn outcome(s: &Seen, sent: write::Sent, l: Lang) -> write::Outcome {
             let say = pick(v, "say", l);
             write::Outcome::AcceptedSaid(match l {
                 Lang::En => format!(
-                    "Accepted by the device · {say}; the result will show in the bar at the top"
+                    "Accepted by the device: {say}; the result will show in the bar at the top"
                 ),
-                Lang::Zh => format!("设备已接受 · {say}，结果会显示在顶部横条"),
+                Lang::Zh => format!("设备已接受：{say}，结果会显示在顶部横条"),
             })
         }
         Seen::Nothing => sent.not_read(),

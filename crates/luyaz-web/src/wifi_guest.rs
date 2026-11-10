@@ -387,11 +387,11 @@ pub fn view(st: &St, l: Lang) -> View {
             label: l.pick("AP Isolation", "AP 隔离"),
             value: if g.isolate {
                 l.pick(
-                    "On · guests can't reach each other",
-                    "开 · 访客之间不能互访",
+                    "On, guests can't reach each other",
+                    "开，访客之间不能互访",
                 )
             } else {
-                l.pick("Off · guests can reach each other", "关 · 访客之间可以互访")
+                l.pick("Off, guests can reach each other", "关，访客之间可以互访")
             }
             .into(),
             data: false,

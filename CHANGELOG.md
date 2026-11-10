@@ -19,6 +19,141 @@ of other components.
 
 A Chinese copy is in [CHANGELOG.zh-CN.md](CHANGELOG.zh-CN.md).
 
+
+## core 1.94.0 — 2026-11-08
+
+- leaving home from a strong signal (the door, the lift) no longer waits out a 5-minute blip hold (7 minutes every morning since 10-27). A scan that sees home remembers the 16 strongest other BSSIDs; when home is gone and under a quarter of them are still around (scan of at least 8 networks), the surroundings changed and it counts as a miss, not a blip. Held scans count towards `exit_misses` without switching, so the first absent scan after the hold switches. With the APs down and leaving in doubt the engine scans every 15 s. `blip_hold_secs` defaults to 120 (was 300). Log: `12/16 neighbours still seen`, `… the surroundings changed …, not a blip`.
+
+## core 1.93.1 — 2026-11-06
+
+- Load ladder: `prev` skips runs that concluded nothing (no baseline): on the device the comparison picked a run whose cell changed at idle.
+
+## touch 1.32.1 — 2026-11-06
+
+- Load ladder: leaving a kept run or the list with ‹ opens the page at its start next time. Headlines in the list join their lines without a stray space after Chinese.
+
+## lweb 1.57.1 — 2026-11-06
+
+- Load Check Runs: no link to itself under the run; the other run in a comparison is a thin faint line under this one, not dashes.
+
+## core 1.93.0 — 2026-11-06
+
+- Load ladder: steps have a kind (`idle`, `down`, `both`, `up`, `recovery`) and the plans gain an upload-only step after both directions: 10/15/20/15/10 s, budget 240 MB (roaming 5/8/8/8/5 s, 12 MB). Downloads stop before it; the upload goes on. `Findings.slow_steps` lists every load step judged slower. Each step also keeps P5 and `increase_ms` (its P90 less idle's P5, as test.libreqos.com reports it; a number only). Progress says the step's `kind`.
+- Results are kept on `/data/luyaz/core/ladder/` (30 runs; ones in `/tmp` move there when first read) with the `context` at the start: RAT, band, PCI, RSRP, SINR, carriers, roaming, chip and battery temperature. New `GET /api/ladder/history` (the last 20, without probes); `/api/ladder/result` adds `prev`, the last run of the same plan and steps that finished, and `chart.kinds`.
+
+## touch 1.32.0 — 2026-11-06
+
+- Load ladder: five rows with 只上传; the chart names each step by its kind; with both directions slower it says whether upload alone queues too. Under the result, 「和 MM-DD HH:MM 那次比」 gives each step's P50 then and now and says when the cell differed. The start screen has 以前的结果: the last 8 kept runs, each opening that result. Start costs read about 75 s and 270 MB. Results from an older core still show, as four steps.
+
+## lweb 1.57.0 — 2026-11-06
+
+- New page `/tools/speedtest/ladder` (Load Check Runs): one kept run in full with each step's delay spread (CDF), a comparison with another run (table and both runs' reaction time; the last one like it by default), the kept runs with a Compare link each, and exports: SVG, PNG (drawn in the browser), print / PDF, JSON. The speed test page links to it. Ladder steps show the delay added over idle, the upload-only step and its finding.
+
+## core 1.92.0 — 2026-11-06
+
+- Load ladder: each step also keeps P95, jitter (the mean change from one answered probe to the next), and how many probes went unanswered in 2 s (`probes`, `timeouts`; not packet loss, which TCP resends hide); its measured span (`from_ms`, `to_ms`); and the run keeps the download and upload rate about once a second (`rates`). None of it changes a finding. `/api/ladder/result` adds `chart`: the whole run in 96 columns (each column's slowest probe, the rates, where steps 2–4 begin) for the touch screen.
+
+## touch 1.31.0 — 2026-11-06
+
+- Load ladder result: two charts under the rows: reaction time over the whole run (top 1000 ms) with a tick and a name for each step, and the download and upload rate. A step where 2% or more of the probes went unanswered for 2 s says so. A result from an older core shows the reaction time without the step marks.
+
+## lweb 1.56.0 — 2026-11-06
+
+- Speed test page, ladder result: each step shows P50 as its value and P90, P95, jitter and unanswered probes under it. The chart is a card with a ms grid, steps 2 and 4 shaded and named, a red mark at the top for each probe unanswered in 2 s, and a second chart of the download and upload rate. Probes from before a redone idle step are left off.
+
+## core 1.91.0 — 2026-11-06
+
+- Load ladder: an idle step disturbed by other traffic or a cell change is measured again, up to twice (at most 20 s more), before the run gives up its baseline; the report notes `idle_redone`, and a run still busy after that ends with `idle_busy` rather than a bare void. On 11-06 the global device's idle step was voided by its LAN clients (an iPad, a phone and Macs syncing in bursts of 1–2 Mbps).
+
+## touch 1.30.3 — 2026-11-06
+
+- Load ladder: a run whose idle step stayed busy says 「空闲时一直有别的流量，这次不下结论」 instead of an unusable baseline; a run whose idle step was measured again says so under the rows.
+
+## lweb 1.55.4 — 2026-11-06
+
+- Speed test page, ladder result: the same two lines as the touch screen for a busy idle step and one measured again.
+
+## core 1.90.5 — 2026-11-06
+
+- Load ladder: a load step whose probes went mostly unanswered is reported (`unresponsive_steps`) even when the cell changed or the idle baseline is unusable, since it needs no baseline, and is no longer read as a load that did not happen. On 11-06 the global device's step 3 went unanswered for about 25 s and the result said only that upload reached 1 Mbps.
+
+## touch 1.30.2 — 2026-11-06
+
+- Load ladder: when the probes went mostly unanswered, the conclusion leads with that (「此刻一加上传，网络就没反应了」, or the video step). When the cell changed at idle, it says so (「测试时换了基站，这次不下结论」) instead of an unusable baseline.
+
+## lweb 1.55.3 — 2026-11-06
+
+- Speed test page, ladder result: the same leads as the touch screen when the probes went mostly unanswered or the cell changed at idle.
+
+## lweb 1.55.2 — 2026-11-06
+
+- Speed Test now really reads the load ladder result; 1.55.0 was refused on its way to the core and said no run had happened.
+
+## touch 1.30.1 — 2026-11-06
+
+- Load ladder: a run without a usable idle baseline says that, not that the line was busy at idle.
+
+## lweb 1.55.1 — 2026-11-06
+
+- Load ladder: a run without a usable idle baseline says that, not that the line was busy at idle.
+
+## touch 1.30.0 — 2026-11-06
+
+- Speed Test has a new row, "Will this place hold up?": the cost, the load ladder as it runs, and what it found right now. Refusals, roaming and a stopped run all have their own words.
+
+## lweb 1.55.0 — 2026-11-06
+
+- Speed Test shows the latest load ladder result with its probes; the raw data is at `/tools/speedtest/ladder.json`.
+
+## lweb 1.54.2 — 2026-11-05
+
+- More sentences use punctuation instead of a middle dot, in both languages. An eSIM chip with no default SM-DP+ says «Not set».
+
+## lweb 1.54.1 — 2026-11-05
+
+- Sentences on the settings pages use punctuation instead of a middle dot. Figures and label rows keep the dot.
+
+## core 1.90.4 — 2026-11-06
+
+- Load ladder: other traffic is judged over each step as a whole, without a load step's first 2 s, as the rates are. A download filling its receive buffer and the 256 KB upload posts no longer read as other traffic.
+
+## core 1.90.3 — 2026-11-06
+
+- Load ladder: the run's own bytes are set beside the counter a tick late, as the counter shows them, so a load just ended is no longer other traffic.
+
+## core 1.90.2 — 2026-11-06
+
+- Load ladder: the traffic counter is read from 1.5 s into the run. It shows bytes up to about 1 s late, so the node picking just before counted as other traffic at idle and most runs had no baseline.
+
+## core 1.90.1 — 2026-11-05
+
+- Load ladder: a load short of its target with the delay up is reported as `queued_steps`, the link's limit at the rate reached, not as a load that did not happen.
+
+## core 1.90.0 — 2026-11-05
+
+- Load ladder: public sources need no node set up. Download from a mirror, upload to Cloudflare, probe a 204 page; they are tried alongside any configured node and the nearest Ookla node, and the best one runs. Upload to Cloudflare measured about 9 Mbps, so the upload step may report that its load did not happen.
+
+## core 1.89.3 — 2026-11-05
+
+- A load ladder step far below its target is listed in `unloaded_steps`, so a load that never happened does not read as holding up.
+
+## core 1.89.2 — 2026-11-05
+
+- The load ladder tries a node's upload and download before using it, on the light ladder too, and reports a stall that lasts until the load ends.
+
+## core 1.89.1 — 2026-11-05
+
+- The load ladder no longer takes `ipv4_ipv6_connected` for a lost connection. `{"light":true}` asks for the light ladder anywhere.
+
+## core 1.89.0 — 2026-11-05
+
+- New load ladder API under `/v2/api/ladder/`: idle, a video load, video plus backup, recovery, reporting response time per step and how fast it recovers. No screen yet; the thresholds are provisional.
+
+## core 1.88.2 / phone 1.31.1 — 2026-11-05
+
+- When CLCC fails ten times in a row, the core still clears the call list, drops the lease and sends the event, now marked `uncertain`. The phone logs that ending as `other` and sends `failed`, not `remote`.
+- A CLCC line with an unknown stat or mode counts as a call. Only data and fax are skipped.
+
 ## Unreleased
 
 - phone: a new call after a core restart is no longer dropped as a stale event of a forwarded call (the mark is forgotten when `boot` changes; an old core without `boot`: on an empty list). Older lists from the same start are ignored. The first `call.list` is asked again while the core says `not_ready`; a lease refused with `no_call` settles from the list. Requires: core 1.81.0 for `boot`.

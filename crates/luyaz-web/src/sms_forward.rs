@@ -11,7 +11,7 @@
 //! URL (a Bark key sits in its path), the ntfy topic and token, the Discord / Slack webhook URL,
 //! the webhook's custom headers. They stay on the server: never rendered, pushed, put in a URL or
 //! logged. Rows and confirms name a destination by type and host only ([`target`]). The edit form
-//! leaves those fields empty (「已设 · 留空不改」, like the Wi-Fi password): empty = keep, merged on
+//! leaves those fields empty (「已设，留空不改」, like the Wi-Fi password): empty = keep, merged on
 //! the server from a fresh read of the rule at send time; a destination of another type needs them
 //! typed. Test and retry are built on the server from a fresh read by numeric rule id / log entry,
 //! never from what the browser sends. The agent's error texts can quote a URL with the token in it
@@ -506,8 +506,8 @@ pub fn view(g: &Got, l: Lang) -> View {
                 (
                     "warn",
                     l.pick(
-                        "Forwarding on · no rule enabled",
-                        "转发已开 · 没有启用的规则",
+                        "Forwarding on, no rule enabled",
+                        "转发已开，没有启用的规则",
                     )
                     .to_string(),
                     Some(
@@ -523,10 +523,10 @@ pub fn view(g: &Got, l: Lang) -> View {
                     "ok",
                     match l {
                         Lang::En => format!(
-                            "Forwarding on · {n} rule{} enabled",
+                            "Forwarding on, {n} rule{} enabled",
                             if n == 1 { "" } else { "s" }
                         ),
-                        Lang::Zh => format!("转发已开 · {n} 条规则启用"),
+                        Lang::Zh => format!("转发已开，{n} 条规则启用"),
                     },
                     Some(match l {
                         Lang::En => format!("Checks for new messages every {} s.", c.poll),
@@ -1401,13 +1401,13 @@ struct Form {
 impl Form {
     /// The kept-secret placeholder text.
     fn kept(&self) -> &'static str {
-        self.l.pick("Set · leave empty to keep it", "已设 · 留空不改")
+        self.l.pick("Set, leave empty to keep it", "已设，留空不改")
     }
     /// The stored rule has `key` under `ty` (a field may be left empty).
     fn has_secret(&self, ty: &str, key: &str) -> bool {
         self.old_type == ty && self.has.contains(&key)
     }
-    /// Placeholder of a secret field: 「已设 · 留空不改」 when the stored rule has it.
+    /// Placeholder of a secret field: 「已设，留空不改」 when the stored rule has it.
     fn ph(&self, ty: &str, key: &str, fallback: &'static str) -> String {
         if self.has_secret(ty, key) {
             self.kept().into()

@@ -16,6 +16,7 @@ export const SCENARIOS = [
   "cmdfail", // every write returns 500 {ok:false,error:"mock failure"}
   "fakesuccess", // 200 ok:true but downstream failed (e.g. tailscale data.error)
   "esim-busy", // POST /api/esim/switch: the card answers catBusy; the job retries (attempts +1 every 4 s) until POST /api/esim/cancel or 60 s
+  "esim-nick-refused", // POST /api/esim/nickname: refused with "nickname too long", whatever the name
   "reboot-token", // POST /api/device/reboot -> 20 s of dropped sockets, then all tokens invalid
   "step2-timeout", // second write of a multi-step op hangs 20 s
   "down", // every socket destroyed (except /__mock/*)

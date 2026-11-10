@@ -34,7 +34,7 @@ fn form_secret_hints() {
     let c2 = config(&slack).unwrap();
     let f = open_form(Some(&c2.rules[0]), Lang::En);
     // switching Slack → Discord: the kept hint gives way to "required"
-    assert!(f.contains("$_rd === 'slack' ? 'Set · leave empty to keep it' : 'Required: the type changed'"));
+    assert!(f.contains("$_rd === 'slack' ? 'Set, leave empty to keep it' : 'Required: the type changed'"));
     assert!(!f.contains("SECRET"));
 }
 
@@ -99,7 +99,7 @@ fn secrets_are_never_rendered() {
     }
     let f = open_form(Some(&cfg().rules[1]), Lang::En);
     assert!(
-        f.contains("Set · leave empty to keep it") && f.contains("-1001"),
+        f.contains("Set, leave empty to keep it") && f.contains("-1001"),
         "{f}"
     );
 }
@@ -350,7 +350,7 @@ fn the_status_says_what_happens() {
     assert!(v.retry);
     g.update(Ok(cfg()), Ok(vec![]));
     let v = view(&g, Lang::En);
-    assert_eq!(v.state, "Forwarding on · 2 rules enabled");
+    assert_eq!(v.state, "Forwarding on, 2 rules enabled");
     assert_eq!(v.last_id, Some(106));
     g.update(Err(Fail::Unreachable), Ok(vec![]));
     let v = view(&g, Lang::Zh);

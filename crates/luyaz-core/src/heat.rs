@@ -150,6 +150,26 @@ fn read_reading(plugged: Option<bool>) -> (Reading, Option<i64>) {
     )
 }
 
+/// A reading taken now, not the 30 s one, with the test offset. Counts as plugged in, so the
+/// warm limit applies whatever the charger is doing. `None`: no sensor answered.
+pub fn read_now() -> Option<Reading> {
+    let (mut r, _) = read_reading(Some(true));
+    let offset = read_offset();
+    r.batt = r.batt.map(|v| v + offset);
+    r.chip = r.chip.map(|v| v + offset);
+    (r.batt.is_some() || r.chip.is_some()).then_some(r)
+}
+
+/// The load ladder does not start from the first level up.
+pub fn too_warm_to_start(r: &Reading) -> bool {
+    t::reached(r, &Limits::default()) != Level::Normal
+}
+
+/// A running load ladder stops at the second level.
+pub fn too_hot_to_run(r: &Reading) -> bool {
+    matches!(t::reached(r, &Limits::default()), Level::Hot | Level::Critical)
+}
+
 /// Whether charging should be paused now (the executor asks).
 pub fn wants_pause() -> bool {
     with(|s| want(s))

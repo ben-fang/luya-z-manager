@@ -211,6 +211,7 @@ impl Source for Replay {
             esim: true,
             speedtest: true,
             servers: true,
+            ladder: false,
             battery: false,
             versions: false,
             landing: false,
@@ -323,6 +324,21 @@ impl Source for Replay {
     fn speedtest_start(&mut self, _chill: bool, _roaming_ok: bool) -> bool {
         self.acted();
         true
+    }
+    fn ladder_start(&mut self, _busy_ok: bool, _roaming_ok: bool) {
+        self.acted();
+    }
+    fn ladder_stop(&mut self) {
+        self.acted();
+    }
+    fn ladder_dismiss(&mut self) {
+        self.acted();
+    }
+    fn ladder_browse(&mut self, _open: bool) {
+        self.acted();
+    }
+    fn ladder_open(&mut self, _i: usize) {
+        self.acted();
     }
     fn speedtest_stop(&mut self) -> bool {
         self.acted();

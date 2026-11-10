@@ -6,6 +6,7 @@ rust-version = "1.99"
 description = "U60 Pro (MU5250) speed test engine driven by the core's compatibility layer."
 license = "PolyForm-Noncommercial-1.0.0"
 [dependencies]
+libc = "0.2"
 serde_json = "1"
 serde = { features = ["derive"], version = "1" }
 ureq = { version = "3", features = ["json"] }

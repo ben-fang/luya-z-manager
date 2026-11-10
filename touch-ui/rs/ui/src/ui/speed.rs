@@ -82,6 +82,8 @@ pub struct Speed {
     full_armed: Option<bool>,
     /// the y the button is at now (old core: ST_ACTION_Y)
     action_y: i32,
+    /// the way to 这里撑得住吗
+    ladder_card: Obj,
     layer_sec: Obj,
     layer_row: Vec<Obj>,
     layer_mark: Vec<Obj>,
@@ -105,6 +107,16 @@ pub struct Speed {
 
 unsafe extern "C" fn speedtest_btn_cb(_e: *mut sys::lv_event_t) {
     super::with(|u| u.speedtest_btn());
+}
+
+unsafe extern "C" fn speedtest_ladder_cb(_e: *mut sys::lv_event_t) {
+    super::with(|u| {
+        // the page opens at its start: a kept run or the list left by ‹ is not where it begins
+        if u.model.ladder.as_ref().is_some_and(|m| m.viewing || m.browsing) {
+            u.src.ladder_browse(false);
+        }
+        u.sub_open_child(Sub::Ladder, Sub::Speed)
+    });
 }
 
 unsafe extern "C" fn speedtest_full_cb(_e: *mut sys::lv_event_t) {
@@ -229,6 +241,9 @@ impl Ui {
         s.offline = kit::label_w(c, f.cj13, th.bad_t, PAD, ST_ACTION_Y + ST_ACTION_H + MARGIN, CARD_W - 2 * PAD, true, "");
         kit::show(s.offline, false);
 
+        s.ladder_card = kit::card(sc, MARGIN, 0, CARD_W, ROW_H);
+        kit::row_nav(s.ladder_card, 0, tr("这里撑得住吗"), true, Some(speedtest_ladder_cb), 0);
+
         // 「分层」 (DR2): a display area, not a card; one row per layer, 40 high
         s.layer_sec = kit::section(sc, 0, tr("分层"));
         kit::show(s.layer_sec, false);
@@ -310,6 +325,8 @@ impl Ui {
         }
         s.result_card.set_height(bottom + PAD);
         let mut y = 4 + bottom + PAD + MARGIN;
+        s.ladder_card.set_y(y);
+        y += ROW_H + MARGIN;
         if !s.layer_sec.hidden() {
             s.layer_sec.set_y(y);
             y += ST_SECTION_H;

@@ -114,7 +114,7 @@ fn list_detail_and_states() {
         true,
         Lang::Zh,
     ));
-    assert!(h.contains(" disabled") && h.contains("数据服务没响应 · 暂时不能改设置"));
+    assert!(h.contains(" disabled") && h.contains("数据服务没响应，暂时不能改设置"));
     // can't be undone: off, u60d's reason
     let h = html(&view(
         &got(entries()),
@@ -178,7 +178,7 @@ fn list_detail_and_states() {
     };
     let h = html(&view(&failed, &Want::default(), &mut None, false, Lang::Zh));
     assert!(
-        h.contains("读不到改动记录 · 数据服务没响应")
+        h.contains("读不到改动记录：数据服务没响应")
             && h.contains("/changes/refresh")
             && h.contains("role=\"alert\"")
     );
@@ -343,7 +343,7 @@ fn undo_body_is_a_new_op_with_undo_set() {
     // stuck executor
     assert_eq!(
         undo_body(e, &a, true, Lang::Zh).unwrap_err(),
-        write::Outcome::NotYet("数据服务没响应 · 暂时不能改设置".into())
+        write::Outcome::NotYet("数据服务没响应，暂时不能改设置".into())
     );
     // only u60d's transaction actions go out (the agent's /api/ops/write guard)
     assert!(matches!(
@@ -424,7 +424,7 @@ async fn readback_follows_the_new_op_id_and_its_phase() {
     let o = outcome(&s, write::Sent::Ok, Lang::Zh);
     assert_eq!(
         o.text(Lang::Zh),
-        "设备已接受 · 正在确认，结果会显示在顶部横条"
+        "设备已接受：正在确认，结果会显示在顶部横条"
     );
     assert_eq!(o.tone(), "neutral");
     assert!(!o.text(Lang::Zh).contains("成功"));

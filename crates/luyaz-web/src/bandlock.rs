@@ -199,8 +199,8 @@ pub(crate) fn progress(a: &Value, l: Lang) -> String {
 
 fn stuck_reason(l: Lang) -> &'static str {
     l.pick(
-        "Data service not responding · settings can't be changed for now",
-        "数据服务没响应 · 暂时不能改设置",
+        "Data service not responding, settings can't be changed for now",
+        "数据服务没响应，暂时不能改设置",
     )
 }
 
@@ -536,8 +536,8 @@ pub fn outcome(s: &Seen, sent: write::Sent, read: bool, w: Which, list: &[u32], 
         Seen::Live(v) => {
             let say = crate::changes::pick(v, "say", l);
             write::Outcome::AcceptedSaid(match l {
-                Lang::En => format!("Accepted by the device · {say}; not confirmed yet"),
-                Lang::Zh => format!("设备已接受 · {say}，还没确认"),
+                Lang::En => format!("Accepted by the device: {say}; not confirmed yet"),
+                Lang::Zh => format!("设备已接受：{say}，还没确认"),
             })
         }
         Seen::Nothing if read => write::Outcome::Applied(applied(w, list, l)),

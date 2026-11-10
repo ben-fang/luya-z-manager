@@ -898,8 +898,8 @@ pub fn refusal(status: u16, v: &Value, l: Lang) -> write::Outcome {
         let doing = crate::changes::pick(&v["doing"], "say", l);
         return write::Outcome::NotYet(if !doing.is_empty() {
             match l {
-                Lang::En => format!("Not applied: another change is in progress · {doing}"),
-                Lang::Zh => format!("没有生效：另一项改动正在进行 · {doing}"),
+                Lang::En => format!("Not applied: another change is in progress ({doing})"),
+                Lang::Zh => format!("没有生效：另一项改动正在进行（{doing}）"),
             }
         } else if status == 503 || msg.starts_with("Wi-Fi is being changed") {
             l.pick(
@@ -1128,8 +1128,8 @@ pub fn view(st: &St, live: Option<&Live>, psm: Option<Psm>, l: Lang) -> View {
     let op = match crate::follow::running(st, &[ITEM], l) {
         Some(s) => Some((
             match l {
-                Lang::En => format!("Changing Wi-Fi settings · {s}"),
-                Lang::Zh => format!("正在改 Wi-Fi 设置 · {s}"),
+                Lang::En => format!("Changing Wi-Fi settings: {s}"),
+                Lang::Zh => format!("正在改 Wi-Fi 设置：{s}"),
             },
             "neutral",
         )),
@@ -1757,7 +1757,7 @@ pub async fn main_cancel(
         let quiet = matches!(first, crate::changes::Seen::Nothing);
         if tx
             .send(patch(&pending(
-                l.pick("The connection dropped · checking the result…", "连接断过 · 正在查看结果…").into(),
+                l.pick("The connection dropped, checking the result…", "连接断过，正在查看结果…").into(),
             )))
             .await
             .is_err()

@@ -493,17 +493,22 @@ fn leaving_follows_the_signal_and_says_why() {
     assert_eq!(e.run_state().current, "home");
     assert_eq!(e.run_state().last_seen_dbm, Some(-40.0));
 
-    // the router blips: held, no miss
+    // the router blips: held (counted, no switch)
     f.scan_returns(vec![]);
     tick_after(&f, &e, 60);
     assert!(f.log().contains("\"home\" not seen, held as a blip: last seen -40 dBm 1m"), "{}", f.log());
+    assert_eq!((e.run_state().current.as_str(), e.run_state().misses), ("home", 1));
+
+    // back strong: the count starts over
+    f.scan_returns(vec![home_net()]);
+    tick_after(&f, &e, 20);
     assert_eq!((e.run_state().current.as_str(), e.run_state().misses), ("home", 0));
 
-    // back, then fading: two weak scans leave
+    // fading: two weak scans leave
     f.scan_returns(vec![net("Home", "02:00:00:00:00:01", -75.0)]);
     tick_after(&f, &e, 60);
     assert!(f.log().contains("\"home\" weak: best -75 dBm (leave below -72)"), "{}", f.log());
     assert_eq!(e.run_state().misses, 1);
-    tick_after(&f, &e, 60);
+    tick_after(&f, &e, 20);
     assert_eq!(e.run_state().current, "away");
 }

@@ -203,7 +203,7 @@ pub fn home_label(item: &str, l: Lang) -> &'static str {
     match item {
         "media" => l.pick("CN media via home", "国内版权走家里"),
         "ip" => l.pick("Home IP sites", "家里 IP 网站"),
-        _ => l.pick("Rest via home · 2h", "其余都走家里 · 2 小时"),
+        _ => l.pick("Rest via home, 2h", "其余都走家里，2 小时"),
     }
 }
 
@@ -231,7 +231,7 @@ pub fn home_code_text(code: &str, l: Lang) -> String {
     match code {
         "busy" => l.pick("Switching, one moment", "正在切换，稍等").to_owned(),
         "list_empty" => l
-            .pick("No sites yet · see /data/chill/home_ip.list", "表里还没有网站 · 见 /data/chill/home_ip.list")
+            .pick("No sites yet: see /data/chill/home_ip.list", "表里还没有网站：见 /data/chill/home_ip.list")
             .to_owned(),
         "not_configured" => l.pick("Home exit not set up", "家里出口没配置").to_owned(),
         c => {
@@ -297,11 +297,11 @@ pub fn home_row(h: &Value, item: &str, now: i64, l: Lang) -> Line {
     if on && h["home"]["ok"].as_bool() == Some(false) {
         let fb = s(h, "fallback_to");
         return if item == "media" || fb.is_empty() {
-            line(l.pick("Home down · direct for now", "家里不通，暂走直连"), "warn")
+            line(l.pick("Home down, direct for now", "家里不通，暂走直连"), "warn")
         } else {
             line(
                 match l {
-                    Lang::En => format!("Home down · via {fb} for now"),
+                    Lang::En => format!("Home down, via {fb} for now"),
                     Lang::Zh => format!("家里不通，暂走 {fb}"),
                 },
                 "warn",
@@ -365,7 +365,7 @@ pub fn home_foot(h: &Value, now: i64, l: Lang) -> Line {
     }
     match h["tailscale"].as_str() {
         Some("offline") => line(l.pick("Can't reach home", "连不上家里"), "bad"),
-        Some("relay") => line(l.pick("Via relay · video may stutter", "经中继，视频可能卡"), "warn"),
+        Some("relay") => line(l.pick("Via relay, video may stutter", "经中继，视频可能卡"), "warn"),
         Some("direct") => match h["home"]["ms"].as_i64().filter(|m| *m > 0) {
             Some(ms) => line(
                 match l {
@@ -477,8 +477,8 @@ mod tests {
             "busy": {"item": "ip", "on": false, "phase": "trial", "until": now + 20}, "home": {"ok": false}});
         assert_eq!(home_row(&b, "ip", now, Lang::En).text, "Trial 0:20");
         let d = json!({"items": {"media": {"on": true}, "ip": {"on": false, "sites": 0}, "rest": {"on": false}}, "home": {"ok": false}});
-        assert_eq!(home_row(&d, "media", now, Lang::En).text, "Home down · direct for now");
-        assert_eq!(home_row(&d, "ip", now, Lang::En).text, "No sites yet · see /data/chill/home_ip.list");
+        assert_eq!(home_row(&d, "media", now, Lang::En).text, "Home down, direct for now");
+        assert_eq!(home_row(&d, "ip", now, Lang::En).text, "No sites yet: see /data/chill/home_ip.list");
         let f = json!({"items": {"ip": {"on": false}}, "notice": {"item": "ip", "kind": "failed", "text": "x", "text_en": "bad", "detail": "d", "at": now - 5}});
         let r = home_row(&f, "ip", now, Lang::En);
         assert_eq!((r.text.as_str(), r.tone), ("bad (d)", "bad"));

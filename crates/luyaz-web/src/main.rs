@@ -78,6 +78,7 @@ mod signal_detect;
 mod sms;
 mod sms_compose;
 mod sms_forward;
+mod ladder_page;
 mod speedtest;
 mod sse;
 mod topbar;
@@ -136,7 +137,7 @@ enum Cmd {
         #[arg(
             long,
             env = "LUYAZ_WEB_PAGES",
-            default_value = "/signal,/charts,/functions,/system,/trends,/clients,/tools/speedtest,/router/signal-detect,/tools/diagnose,/device-info,/router/qci,/tools/cpu,/sms,/sms/compose,/changes,/usb,/bandlock,/router/celllock,/router/apn,/router/network-mode,/router/mobile-network,/router/qos,/router/vpn,/router/telemetry,/router/firewall,/router/lan,/router/wifi,/router/wifi-guest,/alerts,/sms/forward,/scheduler,/router/esim,/health,/settings,/config,/,/services/tailscale,/services/chill,/router/scenario,/router/device,/tools/enable-adb,/tools/agent,/router/sim,/router/dualsim,/router/stc,/router/stk,/tools/at,/tools/processes,/router/dns,/usage"
+            default_value = "/signal,/charts,/functions,/system,/trends,/clients,/tools/speedtest,/tools/speedtest/ladder,/router/signal-detect,/tools/diagnose,/device-info,/router/qci,/tools/cpu,/sms,/sms/compose,/changes,/usb,/bandlock,/router/celllock,/router/apn,/router/network-mode,/router/mobile-network,/router/qos,/router/vpn,/router/telemetry,/router/firewall,/router/lan,/router/wifi,/router/wifi-guest,/alerts,/sms/forward,/scheduler,/router/esim,/health,/settings,/config,/,/services/tailscale,/services/chill,/router/scenario,/router/device,/tools/enable-adb,/tools/agent,/router/sim,/router/dualsim,/router/stc,/router/stk,/tools/at,/tools/processes,/router/dns,/usage"
         )]
         pages: String,
         /// Operator logo files (`<slug>.svg`/`.png`). Trademarks: read from disk, never embedded.
@@ -251,6 +252,9 @@ pub fn app(
         .route("/clients/alias/cancel", post(clients::alias_cancel))
         .route("/tools/speedtest", get(speedtest::page))
         .route("/tools/speedtest/events", get(speedtest::events))
+        .route("/tools/speedtest/ladder.json", get(speedtest::ladder_json))
+        .route("/tools/speedtest/ladder", get(ladder_page::page))
+        .route("/tools/speedtest/ladder.svg", get(ladder_page::svg_file))
         .route("/tools/speedtest/config", post(speedtest::configure))
         .route("/tools/speedtest/start", post(speedtest::start))
         .route("/tools/speedtest/stop", post(speedtest::stop))

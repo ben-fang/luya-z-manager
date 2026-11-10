@@ -270,6 +270,10 @@ async fn writes_are_404_until_step_9() {
         ("POST", "/api/speedtest/start"),
         ("GET", "/api/speedtest/progress"),
         ("POST", "/api/speedtest/stop"),
+        ("POST", "/api/ladder/start"),
+        ("GET", "/api/ladder/progress"),
+        ("GET", "/api/ladder/result"),
+        ("POST", "/api/ladder/cancel"),
         ("GET", "/api/net-tune"),
         ("PUT", "/api/net-tune"),
         ("GET", "/api/esim/profiles"),
@@ -1521,4 +1525,26 @@ async fn net_tune_switch_writes_the_want_file_and_runs_the_script() {
     assert!(!want.exists());
     assert_eq!(call(addr, "PUT", "/api/net-tune", r#"{"on":"yes"}"#).await.0, 400);
     let _ = fs::remove_dir_all(&root);
+}
+
+#[tokio::test]
+async fn ladder_routes_before_any_run() {
+    let root = std::env::temp_dir().join(format!("ladder-routes-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(root.join("tmp/luyaz-ladder")).unwrap();
+    let addr = start(Compat::new(root.to_str().unwrap(), Sources::none()).with_writes(true)).await;
+    let (st, b) = call(addr, "GET", "/api/ladder/progress", "").await;
+    assert_eq!((st, b["running"].as_bool(), b["unfinished"].as_bool()), (200, Some(false), Some(false)), "{b}");
+    assert_eq!(call(addr, "GET", "/api/ladder/result", "").await.0, 404);
+    let (st, b) = call(addr, "POST", "/api/ladder/cancel", "").await;
+    assert_eq!((st, b["running"].as_bool()), (200, Some(false)));
+    assert_eq!(call(addr, "POST", "/api/ladder/start", "not json").await.0, 400);
+    // a run the core did not live through
+    std::fs::write(root.join("tmp/luyaz-ladder/started"), "1").unwrap();
+    let (_, b) = call(addr, "GET", "/api/ladder/progress", "").await;
+    assert_eq!(b["unfinished"].as_bool(), Some(true));
+    std::fs::write(root.join("tmp/luyaz-ladder/9.json"), r#"{"id":9}"#).unwrap();
+    let (st, b) = call(addr, "GET", "/api/ladder/result", "").await;
+    assert_eq!((st, b["result"]["id"].as_i64()), (200, Some(9)), "{b}");
+    let _ = std::fs::remove_dir_all(&root);
 }

@@ -139,6 +139,33 @@ async fn router_reads() -> [Result<Value, String>; 8] {
     ]
 }
 
+/// A run's id: the device clock in seconds, which only has to go up.
+pub(crate) fn now_secs_for_ladder() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_secs())
+}
+
+/// The load ladder's fresh reads: vendor counters, radio, data call.
+pub(crate) async fn ladder_reads() -> (Result<Value, String>, Result<Value, String>, Result<Value, String>) {
+    let traffic = ubus_ttl(
+        0,
+        "zwrt_data",
+        "get_wwandst",
+        json!({"source_module":"deviceui","cid":1,"type":1}),
+    )
+    .await;
+    let net = ubus_ttl(0, "zte_nwinfo_api", "nwinfo_get_netinfo", json!({})).await;
+    let wan = ubus_ttl(
+        0,
+        "zwrt_data",
+        "get_wwaniface",
+        json!({"source_module":"web","cid":1,"connect_status":""}),
+    )
+    .await;
+    (traffic, net, wan)
+}
+
 async fn ubus_ttl(ttl_s: u64, service: &str, method: &str, args: Value) -> Result<Value, String> {
     ubus_ttl_read(ttl_s, service, method, args).await.0
 }

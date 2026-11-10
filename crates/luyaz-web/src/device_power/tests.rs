@@ -37,7 +37,7 @@ fn the_status_says_what_the_device_says() {
         "charge_limit":80,"hysteresis":5,"charging_stopped":false}));
     let (tone, state, reason, meta, retry) = status(&g, Lang::En);
     assert_eq!((tone, state.as_str()), ("ok", "Battery 62%"));
-    assert_eq!(reason.as_deref(), Some("Status: Charging · Charge limit 80%"));
+    assert_eq!(reason.as_deref(), Some("Status: Charging, Charge limit 80%"));
     assert!(meta.is_none() && !retry);
     let stopped = charge(json!({"capacity":80,"battery_status":"Not charging","charge_limit_enabled":true,
         "charge_limit":80,"hysteresis":5,"charging_stopped":true}));

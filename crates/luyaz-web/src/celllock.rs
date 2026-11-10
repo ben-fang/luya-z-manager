@@ -108,8 +108,8 @@ pub fn locks(st: &St) -> Option<(Option<Lock>, Option<Lock>)> {
 
 fn stuck_reason(l: Lang) -> &'static str {
     l.pick(
-        "Data service not responding · settings can't be changed for now",
-        "数据服务没响应 · 暂时不能改设置",
+        "Data service not responding, settings can't be changed for now",
+        "数据服务没响应，暂时不能改设置",
     )
 }
 

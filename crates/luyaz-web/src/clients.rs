@@ -511,8 +511,8 @@ fn view(g: &Got, l: Lang) -> View {
             .into()
     } else {
         match l {
-            Lang::En => format!("{} total · {} active leases", leases.len(), active.len()),
-            Lang::Zh => format!("共 {} 台 · {} 个有效租约", leases.len(), active.len()),
+            Lang::En => format!("{} total, {} active leases", leases.len(), active.len()),
+            Lang::Zh => format!("共 {} 台，{} 个有效租约", leases.len(), active.len()),
         }
     };
     View {
@@ -921,7 +921,7 @@ mod tests {
     #[test]
     fn rows_like_the_old_page() {
         let v = view(&got(), Lang::Zh);
-        assert_eq!(v.state, "共 3 台 · 2 个有效租约");
+        assert_eq!(v.state, "共 3 台，2 个有效租约");
         let List::Rows { active, expired } = &v.list else {
             panic!()
         };
@@ -989,7 +989,7 @@ mod tests {
             ..Default::default()
         };
         let v = view(&g, Lang::Zh);
-        assert_eq!(v.state, "共 1 台 · 1 个有效租约");
+        assert_eq!(v.state, "共 1 台，1 个有效租约");
         let List::Rows { active, expired } = &v.list else {
             panic!()
         };

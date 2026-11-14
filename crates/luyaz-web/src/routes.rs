@@ -188,6 +188,14 @@ pub static ROUTES: &[Route] = &[
         "测速 cesu cs speed"
     ),
     r!(
+        "/tools/speedtest/ladder",
+        "Load Check Runs",
+        "负载体检记录",
+        "Gauge",
+        Charts,
+        "这里撑得住吗 负载 体检 记录 历史 对比 导出 fuzai tijian ladder load history compare export"
+    ),
+    r!(
         "/tools/diagnose",
         "Diagnose",
         "网络诊断",

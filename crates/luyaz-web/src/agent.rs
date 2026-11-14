@@ -98,6 +98,8 @@ const ON_U60D: &[&str] = &[
     "/api/modem/register",
     "/api/modem/netselect/auto",
     "/api/speedtest/",
+    // the load ladder's result (u60d api/ladder.rs); started only from the screen
+    "/api/ladder/result",
     // power.tailnet_poller events and allow list (u60d poller.rs)
     "/api/poller",
     "/api/diagnose",
@@ -425,6 +427,7 @@ mod tests {
         for p in [
             "/api/netinfo?lite=1&apn=1",
             "/api/speedtest/progress",
+            "/api/ladder/result",
             "/api/diagnose",
             "/api/diagnose/feedback",
             "/api/cell/signal-detect/start",

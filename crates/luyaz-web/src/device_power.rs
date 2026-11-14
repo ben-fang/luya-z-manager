@@ -251,7 +251,7 @@ fn status(g: &Got, l: Lang) -> (&'static str, String, Option<String>, Option<Str
         (
             "warn",
             match l {
-                Lang::En => format!("Battery {cap} · charging stopped"),
+                Lang::En => format!("Battery {cap}, charging stopped"),
                 Lang::Zh => format!("电量 {cap} · 已停止充电"),
             },
             if limit_on {
@@ -291,7 +291,7 @@ fn status(g: &Got, l: Lang) -> (&'static str, String, Option<String>, Option<Str
         } else {
             l.pick("No charge limit", "没有充电限制").into()
         });
-        (if known { "ok" } else { "warn" }, state, parts.join(" · "))
+        (if known { "ok" } else { "warn" }, state, parts.join(l.pick(", ", "，")))
     };
     let stale = s.stale();
     if stale {

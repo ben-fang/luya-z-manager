@@ -671,7 +671,10 @@ pub fn kind_label(kind: &str) -> String {
         ("wifi-5g-fallback", "5G Wi-Fi 被停掉，已换到 36 信道"),
         ("ship-auto-rollback", "新版反复出事，已自动换回旧版并隔离"),
         ("ship-conn-rollback", "新版上机后连不上，已自动换回旧版"),
-        ("ship-prev-damaged", "回滚用的旧版副本损坏，当前版本不受影响"),
+        (
+            "ship-prev-damaged",
+            "回滚用的旧版副本损坏，当前版本不受影响",
+        ),
         ("regress-power", "待机耗电比平时高"),
         ("regress-power-abs", "待机耗电超过上限"),
         ("regress-recorder", "长期记录停了 10 分钟以上"),
@@ -781,7 +784,10 @@ pub fn kind_label_en(kind: &str) -> String {
             "Running warm: charging paused / CHILL to eco",
         ),
         ("wifi-5g-down", "5 GHz Wi-Fi down for 5+ min"),
-        ("wifi-5g-fallback", "5 GHz Wi-Fi stopped; moved to channel 36"),
+        (
+            "wifi-5g-fallback",
+            "5 GHz Wi-Fi stopped; moved to channel 36",
+        ),
         (
             "ship-auto-rollback",
             "New build kept failing: old version restored, build quarantined",

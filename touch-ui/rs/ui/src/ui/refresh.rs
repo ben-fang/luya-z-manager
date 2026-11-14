@@ -110,6 +110,7 @@ impl Ui {
             esim_prefetch: self.tab_visible(TAB_CELL) && !self.sub_visible(Sub::Esim) && lv::inactive_ms() > 1500,
             speed: self.sub_visible(Sub::Speed) || self.tab_visible(EXIT),
             speed_page: self.sub_visible(Sub::Speed),
+            ladder: self.sub_visible(Sub::Ladder),
             sys: self.tab_visible(TAB_SYS),
             alerts: self.sub_visible(Sub::Alerts),
             diag: self.sub_visible(Sub::Diag),
@@ -329,6 +330,9 @@ impl Ui {
         let sim_changed = self.sim_refresh();
         self.esim_refresh(sim_changed);
         self.speed_paint();
+        if self.sub_visible(super::Sub::Ladder) {
+            self.ladder_paint();
+        }
         self.system_paint();
         if periodic { self.charts_paint(core_silent); }
         self.sms_paint();

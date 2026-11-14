@@ -1242,7 +1242,7 @@ dependencies = [
 
 [[package]]
 name = "luyaz-core"
-version = "1.88.1"
+version = "1.95.0"
 dependencies = [
  "aes-gcm",
  "anyhow",
@@ -1377,6 +1377,7 @@ dependencies = [
 name = "luyaz-speedtest"
 version = "0.1.0"
 dependencies = [
+ "libc",
  "serde",
  "serde_json",
  "tiny_http",
@@ -1386,7 +1387,7 @@ dependencies = [
 
 [[package]]
 name = "luyaz-ui"
-version = "1.29.2"
+version = "1.32.1"
 dependencies = [
  "libc",
  "lvgl-sys",
@@ -1397,7 +1398,7 @@ dependencies = [
 
 [[package]]
 name = "luyaz-web"
-version = "1.54.0"
+version = "1.57.1"
 dependencies = [
  "askama",
  "axum",

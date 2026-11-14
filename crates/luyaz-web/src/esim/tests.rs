@@ -76,7 +76,7 @@ fn status_follows_the_old_page() {
     assert_eq!((v.tone, v.state.as_str()), ("ok", "In use: 台湾旅行"));
     assert!(v.state_data && v.meta_data && !v.locked);
     assert_eq!(v.chip[1].value, "318 KB");
-    assert_eq!(v.chip[5].value, "—", "default SM-DP+ null");
+    assert_eq!(v.chip[5].value, "Not set", "default SM-DP+ null");
 
     let mut b = c.clone();
     b.take_list(Ok(Listed::Busy));

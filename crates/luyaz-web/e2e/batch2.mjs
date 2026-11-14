@@ -163,12 +163,12 @@ const PAGES = {
       const radios = p.locator("#usb-modes [role=radio]");
       const usbOps = async () => (await stats()).usb_ops ?? [];
       // what the B31 recording says: mode "user", nothing plugged in, fast charging off
-      ok(/没插 USB 线 · 模式 USER/.test(await txt(p, "#usb-status")), `status: ${await txt(p, "#usb-status .nd-status__state")}`);
+      ok(/没插 USB 线$/.test(await txt(p, "#usb-status .nd-status__state")), `status: ${await txt(p, "#usb-status .nd-status__state")}`);
       ok(/当前模式：user/.test(await txt(p, "#usb-modes")) && await p.locator("#usb-modes [aria-checked=true]").count() === 0, "mode from u60d qos: user, no radio selected");
       ok(await radios.count() === 3 && await radios.nth(0).isEnabled() && !/这版固件/.test(await txt(p, "#usb-modes")), "mode_settable absent: like the old page");
       ok(await txt(p, "#usb-cable .nd-row__value") === "已断开" && await txt(p, "#usb-cc .nd-row__value") === "cc1" && await txt(p, "#usb-rj45 .nd-row__value") === "没有", "port rows (agent)");
       ok(/^(是|否)$/.test(await txt(p, "#usb-chgconn .nd-row__value")), "charger rows (battery block)");
-      ok(/disable/.test(await txt(p, "#usb-direct")) && /允许充电/.test(await txt(p, "#usb-direct")), "direct power + meaning (charger block)");
+      ok(await txt(p, "#usb-direct .nd-row__value") === "关，允许充电", `direct power in words (charger block): ${await txt(p, "#usb-direct .nd-row__value")}`);
       const sw = p.locator("#usb-pbrow [role=switch]");
       ok(await sw.isDisabled() && /先在 USB-C 口插上手机/.test(await txt(p, "#usb-pbrow")), "nothing plugged in: fast charging off-limits, said why");
 
@@ -517,7 +517,7 @@ const PAGES = {
       await sleep(800);
       ok(await p.locator("dialog#ch-undo-confirm[open]").count() === 0, "Esc closes it");
       let s1 = await stats();
-      ok(s1.txns.length === s0.txns.length && s1.op_ids.length === s0.op_ids.length, "Cancel / Esc: nothing written");
+      ok(s1.txns.length === s0.txns.length && s1.op_ids.length === s0.op_ids.length, `Cancel / Esc: nothing written (txns +${JSON.stringify(s1.txns.slice(s0.txns.length))} op_ids +${JSON.stringify(s1.op_ids.slice(s0.op_ids.length))})`);
 
       // confirm, the change rolls back: u60d's own words with its tone, read from the op block phase
       await post("/mock/txn?end=rolled_back");
@@ -560,7 +560,7 @@ const PAGES = {
       await p.click("#ch-undo-confirm .nd-btn--confirm");
       await p.waitForFunction(() => /设备已接受/.test(document.querySelector("#ch-undo-op")?.textContent ?? ""), null, { timeout: 30000 }).catch(() => {});
       const live = await txt(p, "#ch-undo-op");
-      ok(live === "设备已接受 · 正在确认，结果会显示在顶部横条" && !/成功/.test(live), `still checking: ${live}`);
+      ok(live === "设备已接受：正在确认，结果会显示在顶部横条" && !/成功/.test(live), `still checking: ${live}`);
       ok(/正在确认/.test(await txt(p, "#op-bar")), `the op bar follows it: ${await txt(p, "#op-bar")}`);
       s1 = await stats();
       const ids = s1.txns.map((x) => x.op_id);
@@ -573,7 +573,7 @@ const PAGES = {
       await p.waitForSelector("#ch-main button:has-text('撤销'):not([disabled])", { timeout: 20000 }).catch(() => {});
       await post("/mock/stuck?age=30000");
       await p.waitForFunction(() => /暂时不能改设置/.test(document.querySelector("#ch-main")?.textContent ?? ""), null, { timeout: 10000 }).catch(() => {});
-      ok(/数据服务没响应 · 暂时不能改设置/.test(await txt(p, "#ch-main")) && await undoBtn.isDisabled(), "stuck: off, said why");
+      ok(/数据服务没响应，暂时不能改设置/.test(await txt(p, "#ch-main")) && await undoBtn.isDisabled(), "stuck: off, said why");
       await post("/mock/stuck");
       await p.waitForSelector("#ch-main button:has-text('撤销'):not([disabled])", { timeout: 10000 }).catch(() => {});
       ok(await undoBtn.isEnabled(), "back on when u60d moves again");
@@ -583,7 +583,7 @@ const PAGES = {
       await p.waitForSelector("#ch-main a.nd-row", { timeout: 20000 });
       await post("/mock/journal?mode=down");
       await p.waitForFunction(() => /读不到改动记录/.test(document.querySelector("#ch-main")?.textContent ?? ""), null, { timeout: 25000 }).catch(() => {});
-      ok(/读不到改动记录 · 数据服务没响应/.test(await txt(p, "#ch-main")) && /数字停在 \d\d:\d\d/.test(await txt(p, "#ch-main")) && await p.locator("#ch-main .nd-group.nd-stale a.nd-row").count() === 5, "unreadable: kept, greyed, stopped at hh:mm");
+      ok(/读不到改动记录：数据服务没响应/.test(await txt(p, "#ch-main")) && /数字停在 \d\d:\d\d/.test(await txt(p, "#ch-main")) && await p.locator("#ch-main .nd-group.nd-stale a.nd-row").count() === 5, "unreadable: kept, greyed, stopped at hh:mm");
       await post("/mock/journal?mode=empty");
       await p.click("#ch-main button:has-text('重试')");
       await p.waitForFunction(() => /还没有改动/.test(document.querySelector("#ch-main")?.textContent ?? ""), null, { timeout: 10000 }).catch(() => {});

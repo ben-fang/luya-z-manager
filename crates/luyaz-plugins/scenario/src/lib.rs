@@ -62,6 +62,7 @@ fn state_in(s: RunState) -> p::RunState {
         matched: None,
         last_seen_at: None,
         last_seen_dbm: None,
+        neighbours: Vec::new(),
     }
 }
 

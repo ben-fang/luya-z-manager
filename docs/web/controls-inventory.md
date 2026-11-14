@@ -1507,6 +1507,18 @@
 
 ---
 
+## /tools/speedtest/ladder 负载体检记录
+
+文件：`crates/luyaz-web/src/ladder_page.rs`、`templates/speedtest_ladder_page.html`。只读：不能从网页开始或删除；开始在触屏「测速 → 这里撑得住吗」。
+
+| 控件 / 显示 | 数据源 | 字段 | 刷新 | 写 |
+|---|---|---|---|---|
+| 选中的那次（标题、每步 P50 和下面的 P90/P95/抖动/没回应/比空闲多、全程反应时间、速率） | `/api/ladder/result?id=`（无 id = 最新） | `report.steps[].{kind,stats,…}`、`samples`、`rates`、`context` | 进页一次 | 否 |
+| 延迟的分布（每步一条 CDF） | 同上 | `samples` 按 `steps[].from_ms/to_ms` 分 | 进页一次 | 否 |
+| 和另一次比（两行概况、逐步表、两次叠图） | `?vs=`，没给就用 `result.prev`（同一档、同一组步骤） | 两次的 `report`、`context` | 进页一次 | 否 |
+| 保存的结果（链接；「和这次比」） | `/api/ladder/history`（最近 20 次，设备存 30 次） | `runs[]` | 进页一次 | 否 |
+| 导出：SVG 图 / PNG 图 / 打印·存 PDF / JSON | `/tools/speedtest/ladder.svg?id=`（服务器出图）；PNG 在浏览器由 SVG 画出；JSON 是 `/tools/speedtest/ladder.json?id=` | — | 点击时 | 否（只下载） |
+
 ## /tools/diagnose 网络诊断
 
 agent 分层检查（Wi-Fi、信号、限速、蜂窝链路、基站负载，开着代理时另有代理层），主因、动作、各层数值它都给中英两份。从应用里点进来（菜单、⌘K、首页「查原因 →」）且没有 10 分钟内的结果时自动开始；直接打开网址、刷新不自动开始。

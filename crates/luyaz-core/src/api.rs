@@ -58,6 +58,7 @@ pub(crate) mod scenario;
 mod scheduler;
 mod sms_forward;
 mod speed;
+mod ladder;
 mod status;
 mod sys_reads;
 mod ts_reads;
@@ -193,6 +194,8 @@ pub struct Compat {
     gate: Arc<std::sync::Mutex<luyaz_api::diagnose::Gate>>,
     /// the speed test engine (the agent's)
     speed: Arc<luyaz_speedtest::SpeedTest>,
+    /// the load ladder (`docs/designs/load-ladder.md`); shares the speed test's running flag
+    ladder: Arc<ladder::Ladder>,
     /// the eSIM engine (the agent's)
     esim: Arc<luyaz_esim::Esim>,
     /// netwatch, deep diagnosis and the APN monitor (9b)
@@ -250,6 +253,7 @@ impl Compat {
         Compat {
             root: Arc::new(root),
             speed,
+            ladder: Arc::default(),
             esim,
             src: Arc::new(src),
             ts: Arc::default(),
@@ -505,6 +509,11 @@ impl Compat {
                 .route("/api/speedtest/start", post(speed::start))
                 .route("/api/speedtest/progress", get(speed::progress))
                 .route("/api/speedtest/stop", post(speed::stop))
+                .route("/api/ladder/start", post(ladder::start))
+                .route("/api/ladder/progress", get(ladder::progress))
+                .route("/api/ladder/result", get(ladder::result))
+                .route("/api/ladder/history", get(ladder::history))
+                .route("/api/ladder/cancel", post(ladder::cancel))
                 // the CPU-path tuning's switch (net-performance.md T9)
                 .route(
                     "/api/net-tune",

@@ -156,7 +156,7 @@ const PAGES = {
       // stuck executor: off, the reason
       await post("/mock/stuck?age=30000");
       await until(p, () => /暂时不能改设置/.test(document.querySelector("#bl-now")?.textContent ?? ""), null, 8000);
-      ok(/数据服务没响应 · 暂时不能改设置/.test(await txt(p, "#bl-now")) && await resetBtn.isDisabled(), "stuck: off, said why");
+      ok(/数据服务没响应，暂时不能改设置/.test(await txt(p, "#bl-now")) && await resetBtn.isDisabled(), "stuck: off, said why");
       await post("/mock/stuck");
       await until(p, () => !document.querySelector("section[aria-labelledby=bl-reset-t] button")?.disabled, null, 8000);
       ok(await resetBtn.isEnabled(), "back on");
@@ -531,7 +531,7 @@ const PAGES = {
     async own(p) {
       const sw = (id) => p.locator(`#mn-conn button[aria-labelledby=${id}-l]`);
       const done = (id, re) => until(p, ([id, re]) => new RegExp(re).test(document.querySelector(`#${id}-op`)?.textContent ?? ""), [id, re], 25000);
-      ok(await txt(p, "#mn-status strong") === "已连接" && /IPv4 \+ IPv6 · 允许数据漫游。/.test(await txt(p, "#mn-status")), `status: ${await txt(p, "#mn-status")}`);
+      ok(await txt(p, "#mn-status strong") === "已连接" && /IPv4 \+ IPv6，允许数据漫游。/.test(await txt(p, "#mn-status")), `status: ${await txt(p, "#mn-status")}`);
       ok(await sw("mn-data").getAttribute("aria-checked") === "true" && await sw("mn-roam").getAttribute("aria-checked") === "true", "data and roaming on");
 
       // mobile data off (tier 2 here, not remote) and back on
@@ -605,7 +605,7 @@ const PAGES = {
       ok(/重启 U60？/.test(await txt(p, "#mn-boot-confirm")) && /约 90 秒/.test(await txt(p, "#mn-boot-confirm")), "reboot dialog");
       await p.click("#mn-boot-confirm .nd-btn--confirm");
       await done("mn-boot", "设备已接受|没有生效");
-      ok(/^设备已接受 · 正在重启/.test(await txt(p, "#mn-boot-op")) && (await stats()).reboots === r0 + 1, `reboot: ${await txt(p, "#mn-boot-op")}`);
+      ok(/^设备已接受，正在重启/.test(await txt(p, "#mn-boot-op")) && (await stats()).reboots === r0 + 1, `reboot: ${await txt(p, "#mn-boot-op")}`);
       await PAGES.mobilenet.reset();
     },
   },

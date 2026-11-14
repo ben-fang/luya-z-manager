@@ -53,10 +53,10 @@ async function own(p) {
   const first = await txt(p, "#ts-peers .ts-peer >> nth=0");
   ok(/home-nas/.test(first) && /100\.88\.14\.2/.test(first) && /↑.*↓/.test(first) && /在线/.test(first), `first peer: ${first}`);
   ok(/离线/.test(await txt(p, "#ts-peers")), "an offline peer");
-  ok(/节点\s*\d+/.test(await txt(p, "#ts-mesh")) && /没走出口节点/.test(await txt(p, "#ts-mesh")) && /正在通信/.test(await txt(p, "#ts-mesh")), `mesh: ${await txt(p, "#ts-mesh")}`);
+  ok(!/节点\s*\d+/.test(await txt(p, "#ts-mesh")) && /2 · 1 直连 · 1 中继/.test(await txt(p, "#ts-mesh")) && /没走出口节点/.test(await txt(p, "#ts-mesh")) && /正在通信/.test(await txt(p, "#ts-mesh")), `mesh: ${await txt(p, "#ts-mesh")}`);
   // help popover
   await p.click("#ts-node .nd-help >> nth=0");
-  ok(await p.locator("#h-ts-state").isVisible(), "help popover opens");
+  ok(await p.locator("#h-ts-derp").isVisible() && /中转/.test(await txt(p, "#h-ts-derp")), "help popover opens");
   await p.keyboard.press("Escape");
 
   // the log: lines shown; polled every 4 s (204 while unchanged); Pause stops it; Refresh asks

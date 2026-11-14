@@ -216,8 +216,8 @@ pub fn outcome(f: &Followed, sent: write::Sent, applied: String, l: Lang) -> wri
         Seen::Live(v) => {
             let say = crate::changes::pick(v, "say", l);
             write::Outcome::AcceptedSaid(match l {
-                Lang::En => format!("Accepted by the device · {say}; not confirmed yet"),
-                Lang::Zh => format!("设备已接受 · {say}，还没确认"),
+                Lang::En => format!("Accepted by the device: {say}; not confirmed yet"),
+                Lang::Zh => format!("设备已接受：{say}，还没确认"),
             })
         }
         Seen::Nothing if f.read => write::Outcome::Applied(applied),

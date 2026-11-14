@@ -18,6 +18,7 @@ pub mod live;
 pub mod netinfo;
 pub mod scenario;
 pub mod screen_feed;
+pub mod ladder;
 pub mod speedtest;
 pub mod tailscale;
 pub mod today;

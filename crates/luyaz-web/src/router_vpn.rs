@@ -165,8 +165,8 @@ pub fn view(st: &St, busy: Option<(&str, bool)>, l: Lang) -> View {
                     },
                     sub: if on.is_none() {
                         match l {
-                            Lang::En => format!("{d} · state unknown: the device doesn't report it, a change can't be confirmed"),
-                            Lang::Zh => format!("{d} · 设备没有报告，改了也读不回来确认"),
+                            Lang::En => format!("{d}: state unknown, the device doesn't report it, a change can't be confirmed"),
+                            Lang::Zh => format!("{d}：设备没有报告，改了也读不回来确认"),
                         }
                     } else {
                         d.into()

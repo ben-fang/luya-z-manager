@@ -19,6 +19,7 @@ use super::http;
 use super::netinfo::Netinfo;
 use super::scenario::Scenario;
 use super::screen_feed::{ScreenFeed, SfCfg};
+use super::ladder::Ladder;
 use super::speedtest::Speedtest;
 use super::tailscale::Tailscale;
 use super::util;
@@ -43,6 +44,7 @@ pub struct Live {
     alerts: Cached<Alerts>,
     esim: Cached<Esim>,
     speed: Cached<Speedtest>,
+    ladder: Cached<Ladder>,
     ts: Cached<Tailscale>,
     diag: Cached<Diagnose>,
     bat: Cached<BatteryEst>,
@@ -69,6 +71,7 @@ impl Live {
             alerts: Cached::new(Alerts::default()),
             esim: Cached::new(Esim::default()),
             speed: Cached::new(Speedtest::default()),
+            ladder: Cached::new(Ladder::default()),
             ts: Cached::new(Tailscale::default()),
             diag: Cached::new(Diagnose::default()),
             bat: Cached::new(BatteryEst::default()),
@@ -169,6 +172,7 @@ impl Live {
             st_servers: st.servers().to_vec(),
             st_selected_index: st.selected(),
             st_v2: st.v2().cloned(),
+            ladder: Some(self.ladder.model().clone()),
 
             agent_health: self.scenario.health(),
             scenario: self.scenario.status(),
@@ -287,6 +291,9 @@ impl Source for Live {
         });
         p.speedtest = speed & 1 != 0;
         p.servers = speed & 2 != 0;
+        let mut ag = self.agent.clone();
+        let active = a.ladder;
+        p.ladder = self.ladder.poll(move |s| s.poll(&mut ag, active) as u32) != 0;
         let mut ag = self.agent.clone();
         let sys = a.sys;
         // Home's battery cell: time left / to full
@@ -426,6 +433,23 @@ impl Source for Live {
     }
     fn speedtest_start(&mut self, chill: bool, roaming_ok: bool) -> bool {
         self.speed.start(&mut self.agent, chill, roaming_ok)
+    }
+    fn ladder_start(&mut self, busy_ok: bool, roaming_ok: bool) {
+        let agent = self.agent.clone();
+        self.ladder.start(agent, busy_ok, roaming_ok);
+    }
+    fn ladder_stop(&mut self) {
+        let agent = self.agent.clone();
+        self.ladder.stop(agent);
+    }
+    fn ladder_dismiss(&mut self) {
+        self.ladder.dismiss();
+    }
+    fn ladder_browse(&mut self, open: bool) {
+        self.ladder.browse(open);
+    }
+    fn ladder_open(&mut self, i: usize) {
+        self.ladder.open(i);
     }
     fn speedtest_stop(&mut self) -> bool {
         self.speed.stop(&mut self.agent)

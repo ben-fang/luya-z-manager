@@ -177,8 +177,8 @@ pub fn apn(st: &St) -> Option<Apn> {
 
 fn stuck_reason(l: Lang) -> &'static str {
     l.pick(
-        "Data service not responding · settings can't be changed for now",
-        "数据服务没响应 · 暂时不能改设置",
+        "Data service not responding, settings can't be changed for now",
+        "数据服务没响应，暂时不能改设置",
     )
 }
 
@@ -967,8 +967,8 @@ async fn pick(
         Ok(_) => {}
     }
     let say = l.pick(
-        "Switching · mobile data re-dials with the new APN…",
-        "正在切换 · 移动数据用新的 APN 重新拨号…",
+        "Switching: mobile data re-dials with the new APN…",
+        "正在切换：移动数据用新的 APN 重新拨号…",
     );
     if tx.send(patch(&pending(say.into()))).await.is_err() {
         return write::Outcome::Accepted;

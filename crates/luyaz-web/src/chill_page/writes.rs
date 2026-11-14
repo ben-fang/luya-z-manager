@@ -387,7 +387,7 @@ pub async fn home_ask(State(app): State<Shared>, Query(q): Query<HomeQ>, req: Re
     let roaming = h["where"]["true_roaming"].as_bool() != Some(false);
     let c = inline(
         home_words(&q.item, on, l),
-        if roaming { l.pick("Drops ~5 s · uses roaming data", "会断一下，走漫游流量") } else { l.pick("Drops for ~5 s", "会断一下（约 5 秒）") }.into(),
+        if roaming { l.pick("Drops ~5 s, uses roaming data", "会断一下，走漫游流量") } else { l.pick("Drops for ~5 s", "会断一下（约 5 秒）") }.into(),
         match l {
             Lang::En => format!("Confirm: {}", home_words(&q.item, on, l)),
             Lang::Zh => format!("确认：{}", home_words(&q.item, on, l)),

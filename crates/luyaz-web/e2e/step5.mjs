@@ -59,9 +59,9 @@ const PAGES = {
     path: "/clients",
     ready: (p) => p.waitForSelector("#cl-list .nd-row .nd-row__label[data-data]", { timeout: 15000 }),
     async own(p) {
-      ok(/共 5 台 · 4 个有效租约/.test(await p.textContent("#cl-status")), `summary: ${(await p.textContent("#cl-status .nd-status__state")).trim()}`);
+      ok(/共 5 台，4 个有效租约/.test(await p.textContent("#cl-status")), `summary: ${(await p.textContent("#cl-status .nd-status__state")).trim()}`);
       ok(await p.locator("#cl-list .nd-row:visible").count() === 4, "4 active rows shown, the expired one hidden");
-      ok(/5 GHz · Wi-Fi 6 · 2402 Mbps · 信号很好/.test(await p.textContent("#cl-list")), "Wi-Fi line");
+      ok(/5 GHz · Wi-Fi 6 · ↓2402 ↑1201 Mbps · 信号很好/.test(await p.textContent("#cl-list")), "Wi-Fi line");
       ok(/没连 Wi-Fi/.test(await p.textContent("#cl-list")), "not-on-Wi-Fi line");
       await p.click("#cl-list button[aria-expanded]:not(.cl-more)");
       ok(await p.locator("#cl-list .nd-row:visible").count() === 5 && await p.getAttribute("#cl-list button[aria-expanded]:not(.cl-more)", "aria-expanded") === "true", "toggle shows the expired lease");
@@ -88,8 +88,10 @@ const PAGES = {
       const mb = "#cl-b-a483e7000012", det = "#cl-d-a483e7000012";
       await p.click(mb);
       ok(await p.isVisible(det) && await p.getAttribute(mb, "aria-expanded") === "true", "details open");
-      const srcs = await p.locator(`${det} .cl-src > div`).allInnerTexts();
+      const srcs = await p.locator(`${det} .cl-src:not(.cl-link) > div`).allInnerTexts();
       ok(srcs.length === 5 && /DHCP/.test(srcs[0]) && /NetBIOS/.test(srcs[1]) && /OUI/.test(srcs[2]) && /SSDP/.test(srcs[3]) && /笔记本电脑/.test(srcs[4]), `every source listed: ${srcs.map((x) => x.replace(/\s+/g, " ")).join(" | ")}`);
+      const link = await p.locator(`${det} .cl-link > div`).allInnerTexts();
+      ok(link.length === 4 && /协商速率/.test(link[0]) && /频段/.test(link[1]) && /信号强度/.test(link[2]) && /Wi-Fi 协议/.test(link[3]), `Wi-Fi link rows: ${link.map((x) => x.replace(/\s+/g, " ")).join(" | ")}`);
       await p.fill(`${det} input`, "工作电脑");
       await p.click(`${det} .cl-acts .nd-btn--secondary`);
       await p.waitForSelector("#cl-alias-confirm", { timeout: 5000 }).catch(() => {});
@@ -136,7 +138,7 @@ const PAGES = {
       // roaming (the mock's default): the core only runs coarse; the cost says so, CHILL can't be added
       await p.click("#st-status .nd-btn--primary");
       ok(/漫游中：只粗测 5 秒、最多 30 MB/.test(await p.textContent("#st-start-confirm")), `roaming cost: ${(await p.textContent("#st-start-confirm")).trim()}`);
-      ok(await p.isDisabled("#st-via-chill [role=switch]") && /漫游中只粗测/.test(await p.textContent("#st-chill .nd-row__text")), "CHILL switch off while roaming");
+      ok(await p.isDisabled("#st-via-chill [role=switch]") && /漫游中只粗测/.test(await p.textContent("#st-via-chill .nd-row__text")), "CHILL switch off while roaming");
       await p.click("#st-start-confirm .nd-btn--confirm");
       await done(/完成/, 12000);
       ok(/粗测 · 漫游中只测 5 秒/.test(await live()), `rough result: ${await live()}`);
@@ -145,7 +147,7 @@ const PAGES = {
       await p.click("#st-status .nd-btn--primary");
       await p.click("#st-start-confirm button:has-text(\"仍要完整测速\")");
       ok(!(await p.isVisible("#st-start-confirm")) && await p.isVisible("#st-full-confirm"), "full anyway: its own confirm");
-      ok(/走漫游流量，约 30 秒 · 最多 750 MB/.test(await p.textContent("#st-full-confirm")), `roaming full cost: ${(await p.textContent("#st-full-confirm")).trim()}`);
+      ok(/走漫游流量，约 30 秒，最多 750 MB/.test(await p.textContent("#st-full-confirm")), `roaming full cost: ${(await p.textContent("#st-full-confirm")).trim()}`);
       await p.click("#st-full-confirm .nd-btn--confirm");
       await p.waitForFunction(() => /\d\/5 · /.test(document.querySelector("#st-status [aria-live]")?.textContent ?? ""), null, { timeout: 8000 }).catch(() => {});
       ok(/\d\/5 · /.test(await live()), `roaming full run: ${await live()}`);
@@ -158,7 +160,7 @@ const PAGES = {
       await p.reload();
       await ready();
       await p.click("#st-status .nd-btn--primary");
-      ok(await p.isVisible("#st-start-confirm") && /移动数据：约 30 秒 · 最多 750 MB/.test(await p.textContent("#st-start-confirm")), "Start opens the inline confirm with the data cost");
+      ok(await p.isVisible("#st-start-confirm") && /移动数据：约 30 秒，最多 750 MB/.test(await p.textContent("#st-start-confirm")), "Start opens the inline confirm with the data cost");
       ok(await p.getAttribute("#st-status .nd-btn--primary", "aria-expanded") === "true", "trigger aria-expanded");
       await p.selectOption("#st-server-select", "ookla:27981");
       await p.click("#st-start-confirm .nd-btn--confirm");

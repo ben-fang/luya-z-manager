@@ -251,8 +251,8 @@ fn view(run: &Run, l: Lang) -> View {
                     )
                 } else {
                     l.pick(
-                        "No result yet · press “Start Detection”",
-                        "还没有结果 · 按「开始检测」",
+                        "No result yet, press “Start Detection”",
+                        "还没有结果，按「开始检测」",
                     )
                 }
                 .to_string(),

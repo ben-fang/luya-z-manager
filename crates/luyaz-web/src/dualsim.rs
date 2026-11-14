@@ -153,8 +153,8 @@ pub fn slot_name(n: u8, l: Lang) -> &'static str {
 
 fn stuck_reason(l: Lang) -> &'static str {
     l.pick(
-        "Data service not responding · settings can't be changed for now",
-        "数据服务没响应 · 暂时不能改设置",
+        "Data service not responding, settings can't be changed for now",
+        "数据服务没响应，暂时不能改设置",
     )
 }
 

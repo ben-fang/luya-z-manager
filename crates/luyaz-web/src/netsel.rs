@@ -52,8 +52,8 @@ const JOB_POLL: Duration = Duration::from_secs(3);
 
 fn stuck_reason(l: Lang) -> &'static str {
     l.pick(
-        "Data service not responding · settings can't be changed for now",
-        "数据服务没响应 · 暂时不能改设置",
+        "Data service not responding, settings can't be changed for now",
+        "数据服务没响应，暂时不能改设置",
     )
 }
 
@@ -561,7 +561,7 @@ pub fn net_view(st: &St, jobs: Option<&Result<Jobs, Fail>>, l: Lang) -> NetView 
                 .into_iter()
                 .filter(|s| !s.is_empty())
                 .collect::<Vec<_>>()
-                .join(" · "),
+                .join(l.pick(". ", "，")),
         ),
         Some(_) if kind == "unconfirmed" => (
             "neutral",
@@ -923,7 +923,7 @@ async fn net_run(app: Shared, act: Act, who: Caller, l: Lang, tx: tokio::sync::m
         Act::Reboot => {
             let body = json!({"action": "device.reboot", "params": {}, "source": "web", "op_id": write::next_op_id()});
             match write::send_body(&app.http, &app.control_url, &body, Some(SEND_TIMEOUT), l).await {
-                Ok(_) => write::Outcome::AcceptedSaid(l.pick("Accepted by the device · rebooting; this page comes back in about 90 seconds", "设备已接受 · 正在重启，约 90 秒后再打开本页").into()),
+                Ok(_) => write::Outcome::AcceptedSaid(l.pick("Accepted by the device, rebooting; this page comes back in about 90 seconds", "设备已接受，正在重启，约 90 秒后再打开本页").into()),
                 Err(o) => o,
             }
         }
@@ -932,7 +932,7 @@ async fn net_run(app: Shared, act: Act, who: Caller, l: Lang, tx: tokio::sync::m
             Ok(_) => {
                 let _ = app.kick.send(NET_PATH);
                 let r = wait_agent(&app, &who, &tx, SCAN_WAIT, l, &pending, |j| match j.scan.as_str() {
-                    "done" if j.ops.is_empty() => Ok(write::Outcome::NotYet(l.pick("No carriers found · check the antenna position and scan again.", "没有找到运营商 · 调整设备位置后再扫描一次。").into())),
+                    "done" if j.ops.is_empty() => Ok(write::Outcome::NotYet(l.pick("No carriers found. Check the antenna position and scan again.", "没有找到运营商 · 调整设备位置后再扫描一次。").into())),
                     "done" => Ok(write::Outcome::Applied(match l {
                         Lang::En => format!("{} carriers found", j.ops.len()),
                         Lang::Zh => format!("找到 {} 个运营商", j.ops.len()),

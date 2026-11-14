@@ -34,7 +34,7 @@ impl Pool {
         }
     }
     /// Reserve up to `want`; 0 = the pool is empty.
-    fn take(&self, want: u64) -> u64 {
+    pub(super) fn take(&self, want: u64) -> u64 {
         let mut got = 0;
         let _ = self
             .used
@@ -44,7 +44,7 @@ impl Pool {
             });
         got
     }
-    fn give(&self, n: u64) {
+    pub(super) fn give(&self, n: u64) {
         let _ = self
             .used
             .try_update(Ordering::SeqCst, Ordering::SeqCst, |u| {
@@ -52,7 +52,7 @@ impl Pool {
             });
     }
     /// Counted, never refused (latency probes: a few hundred bytes each).
-    fn add(&self, n: u64) {
+    pub(super) fn add(&self, n: u64) {
         self.used.fetch_add(n, Ordering::SeqCst);
     }
     pub(super) fn room(&self) -> u64 {

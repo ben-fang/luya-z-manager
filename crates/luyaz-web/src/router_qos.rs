@@ -167,8 +167,8 @@ pub fn view(st: &St, l: Lang) -> View {
         reason: Some(why.into()),
         meta: stale.then(|| {
             l.pick(
-                "Not updating · showing the last reading",
-                "没有在更新 · 显示的是上一次的读数",
+                "Not updating, showing the last reading",
+                "没有在更新，显示的是上一次的读数",
             )
         }),
         retry: down,
@@ -367,7 +367,7 @@ mod tests {
             Lang::En,
         );
         assert_eq!(x.tone, "stale");
-        assert_eq!(x.meta, Some("Not updating · showing the last reading"));
+        assert_eq!(x.meta, Some("Not updating, showing the last reading"));
         assert!(Leaves { v: &x }.render().unwrap().contains("nd-stale"));
         // connected, no router block: u60d doesn't have it
         let x = v(None, false, Lang::Zh);

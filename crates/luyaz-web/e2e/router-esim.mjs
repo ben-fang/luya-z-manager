@@ -67,17 +67,23 @@ async function own(p, ctx) {
   const sw = p.locator("#es-sw2");
   ok((await sw.getAttribute("aria-labelledby")) === "es-sw2 es-n2" && /Switch|切换/.test(await sw.textContent()), "switch button named with the profile");
 
-  // ---- rename (tier 2): too long → the agent's refusal; then ok + readback
+  // ---- rename (tier 2): over 64 bytes → said before asking; the agent's refusal; then ok + readback
   await row(p, "Pacific Roam").locator("button[id^=es-rn]").click();
   const input = p.locator("#es-ni2");
   await input.waitFor({ state: "visible", timeout: 5000 });
   await input.fill("长".repeat(25));
+  await row(p, "Pacific Roam").locator("button[id^=es-sv]").click();
+  await until(p, "#es-prof-op", /64 字节/);
+  ok(/最多 64 字节（约 21 个汉字）/.test(await txt(p, "#es-prof-op")) && await p.locator("#es-prof-confirm").count() === 0 && await nPost("/api/esim/nickname") === 0, `over 64 bytes: said before asking, not sent: ${await txt(p, "#es-prof-op")}`);
+  await scenario("esim-nick-refused");
+  await input.fill("长".repeat(21)); // 63 bytes: the page lets it through
   await row(p, "Pacific Roam").locator("button[id^=es-sv]").click();
   await p.waitForSelector("#es-prof-confirm", { timeout: 8000 });
   ok(/显示为/.test(await txt(p, "#es-prof-confirm")), "rename: inline confirm states the consequence");
   await p.click("#es-prof-confirm .nd-btn--confirm");
   await until(p, "#es-prof-op", /没有生效/);
   ok(/没有生效：nickname too long/.test(await txt(p, "#es-prof-op")), `rename refused: ${await txt(p, "#es-prof-op")}`);
+  await scenario("normal");
   await input.fill("日本旅行");
   await input.press("Enter");
   await p.waitForSelector("#es-prof-confirm", { timeout: 8000 });

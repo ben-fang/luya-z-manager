@@ -270,7 +270,7 @@ fn status_bands_and_the_last_change() {
     // a running wifi.main transaction shows its progress; a guest one does not
     let h = hub_with(wifi_data(), json!({"active": {"op_id": "y", "item": "wifi.main", "say_zh": "正在确认", "say_en": "Checking"}}));
     let v = h.read(|st| view(st, None, None, Lang::Zh));
-    assert_eq!(v.op.unwrap().0, "正在改 Wi-Fi 设置 · 正在确认");
+    assert_eq!(v.op.unwrap().0, "正在改 Wi-Fi 设置：正在确认");
     let h = hub_with(wifi_data(), json!({"active": {"op_id": "y", "item": "wifi.guest", "say_zh": "正在确认"}}));
     assert!(h.read(|st| view(st, None, None, Lang::Zh)).op.is_none());
     // master off
@@ -290,7 +290,7 @@ fn the_form_renders_seeded_and_never_with_a_password() {
     let open = h.read(|st| form(true, st, Lang::En));
     assert!(open.contains("data-bind=\"_fs2\"") && open.contains("type=\"password\"") && open.contains("filterSignals"));
     assert!(open.contains("_gc2&#34;:&#34;auto&#34;"), "seed signals: {open}");
-    assert!(open.contains("Set · leave empty to keep it"));
+    assert!(open.contains("Set, leave empty to keep it"));
     // the current value stays an option even if not in the list
     let mut w = wifi_data();
     w["band_5g"]["htmode"] = json!("HE80");

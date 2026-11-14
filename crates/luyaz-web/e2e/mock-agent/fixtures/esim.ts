@@ -17,6 +17,7 @@
 // "fakesuccess" makes a switch end as done + rebooting:true ("switched —
 // rebooting to finish") while the card never actually changed — the
 // unverified-reboot path the inventory flags (luyaz-esim `finish_job`).
+// "esim-nick-refused" makes a rename fail (the page stops over-long names itself).
 // "esim-busy" makes a switch wait out a busy card like luyaz-esim's catBusy
 // retries: `attempts` +1 every 4 s, `message` "card busy — retrying (try N in
 // 4 s)", until POST /api/esim/cancel (reason "cancelled") or 60 s ("card_busy").
@@ -270,7 +271,7 @@ function nickname(ctx: Ctx): Reply {
   if (!iccid || !validIccid(iccid)) return fail("invalid iccid", 400);
   const raw = ctx.body.nickname;
   const nick = typeof raw === "string" ? raw.trim() : "";
-  if (Buffer.byteLength(nick, "utf8") > MAX_NICKNAME_LEN) return fail("nickname too long", 400);
+  if (Buffer.byteLength(nick, "utf8") > MAX_NICKNAME_LEN || ctx.has("esim-nick-refused")) return fail("nickname too long", 400);
   const p = profiles.find((x) => x.iccid === iccid);
   if (!p) return fail("lpac: es10c_set_nickname: iccidOrAidNotFound (code -1)", 502);
   p.profileNickname = nick === "" ? null : nick;

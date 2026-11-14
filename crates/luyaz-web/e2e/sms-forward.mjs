@@ -69,7 +69,7 @@ async function own(p) {
   const dialog = (id) => p.locator(`dialog#${id}-confirm[open]`);
   const op = (id) => txt(p, `#${id}-op`);
 
-  ok(/转发已开 · 1 条规则启用/.test(await txt(p, "#fwd-status")) && /#106/.test(await txt(p, "#fwd-status")), `status: ${await txt(p, "#fwd-status")}`);
+  ok(/转发已开，1 条规则启用/.test(await txt(p, "#fwd-status")) && /#106/.test(await txt(p, "#fwd-status")), `status: ${await txt(p, "#fwd-status")}`);
   ok(await p.getAttribute("#fwd-tab-cfg", "aria-selected") === "true", "tabs: settings first");
 
   // settings: an interval the agent would refuse is stopped here, no confirm
@@ -116,7 +116,7 @@ async function own(p) {
   // edit it: the token is never shown; empty = keep
   await p.click(`#fwd-e-${tg.id}`);
   await p.waitForSelector("input[data-bind=_rbt]", { timeout: 8000 }).catch(() => {});
-  ok(await p.inputValue("input[data-bind=_rbt]") === "" && /已设 · 留空不改/.test(await p.getAttribute("input[data-bind=_rbt]", "placeholder")), "edit: token field empty, 「已设 · 留空不改」");
+  ok(await p.inputValue("input[data-bind=_rbt]") === "" && /已设，留空不改/.test(await p.getAttribute("input[data-bind=_rbt]", "placeholder")), "edit: token field empty, 「已设，留空不改」");
   ok(await p.inputValue("input[data-bind=_rci]") === "-42" && await p.inputValue("input[data-bind=_rn]") === "TG 测试", "edit: the rest prefilled");
   await p.fill("input[data-bind=_rn]", "TG 2");
   await p.click("#fwd-form .nd-btn--primary");
@@ -225,7 +225,7 @@ for (const [w, h, name, lang, theme] of [[1280, 900, "desk", "zh", "light"], [12
     await p.click("#fwd-tab-rules");
     await p.click("#fwd-e-1");
     await p.waitForSelector("input[data-bind=_rwu]", { timeout: 8000 }).catch(() => {});
-    ok(await p.isVisible("input[data-bind=_rwu]") && /已设 · 留空不改/.test(await p.getAttribute("input[data-bind=_rwu]", "placeholder")), "webhook URL write-only");
+    ok(await p.isVisible("input[data-bind=_rwu]") && /已设，留空不改/.test(await p.getAttribute("input[data-bind=_rwu]", "placeholder")), "webhook URL write-only");
     pages.push(await p.content());
   }
   if (lang === "en") {

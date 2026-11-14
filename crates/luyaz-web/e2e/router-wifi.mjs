@@ -141,7 +141,7 @@ async function own(p) {
   await p.click("button[aria-labelledby=wf-fw6-l]");
 
   // busy: 409 with doing, then 503 for the Wi-Fi lock — shown, not hidden
-  for (const [next, re] of [["doing", "另一项改动正在进行 · 正在改访客 Wi-Fi"], ["lock", "Wi-Fi 正被别的程序修改"], ["refused", "设备上没有留着旧的 Wi-Fi 密码"]]) {
+  for (const [next, re] of [["doing", "另一项改动正在进行（正在改访客 Wi-Fi"], ["lock", "Wi-Fi 正被别的程序修改"], ["refused", "设备上没有留着旧的 Wi-Fi 密码"]]) {
     await post("/mock/wifi", { next });
     await p.click("button[aria-labelledby=wf-fx2-l]");
     await apply();

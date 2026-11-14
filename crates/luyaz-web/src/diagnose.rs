@@ -132,8 +132,8 @@ fn row_view(layer: &Value, l: Lang, speed_for: Option<u64>) -> RowV {
                 l.pick("Can't check", "测不了").into()
             } else {
                 match l {
-                    Lang::En => format!("Can't check · {detail}"),
-                    Lang::Zh => format!("测不了 · {detail}"),
+                    Lang::En => format!("Can't check: {detail}"),
+                    Lang::Zh => format!("测不了：{detail}"),
                 }
             },
             String::new(),
@@ -1264,7 +1264,7 @@ mod tests {
             names,
             ["Wi-Fi", "蜂窝链路", "设备时间", "基站负载", "代理", "速度"]
         );
-        assert_eq!(v.rows[3].word, "测不了 · 无数据");
+        assert_eq!(v.rows[3].word, "测不了：无数据");
         assert!(v.rows[3].muted);
         // blocked: grey, says why
         assert_eq!(

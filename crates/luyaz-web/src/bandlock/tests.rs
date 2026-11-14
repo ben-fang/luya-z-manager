@@ -121,7 +121,7 @@ fn buttons_off_while_stuck_or_a_band_change_runs() {
     let hub = hub_with(sig(ALL_LTE, ALL_NR, ALL_NR), None);
     hub.apply(&Frame { event: "heartbeat".into(), data: json!({"epoch": "e", "seq": 1, "blocks": {}, "exec_age_ms": 60000}).to_string() });
     let v = hub.read(|st| view(st, Lang::Zh));
-    assert!(v.dis && v.why.as_deref() == Some("数据服务没响应 · 暂时不能改设置"), "{:?}", v.why);
+    assert!(v.dis && v.why.as_deref() == Some("数据服务没响应，暂时不能改设置"), "{:?}", v.why);
     let b = hub.read(bands);
     assert!(matches!(check(Which::Lte, "1", b.as_ref(), true, Lang::Zh), Err(write::Outcome::NotYet(_))));
 }

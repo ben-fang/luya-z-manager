@@ -6,6 +6,7 @@
 // behind the fake agent (AGENT) and the mock u60d (MOCK). From source/manager:
 //   WEB=http://127.0.0.1:18591 MOCK=http://127.0.0.1:19491 AGENT=http://127.0.0.1:19591 OUT=/tmp/lw-home \
 //     crates/luyaz-web/e2e/run.sh home
+// serve needs LUYAZ_WEB_CHILL_SH=<any existing file> (with --password-file CHILL counts as installed only if /data/chill/chill.sh exists).
 import { chromium } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 

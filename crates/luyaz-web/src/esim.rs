@@ -608,7 +608,7 @@ pub fn view(c: &Card, reboot: bool, l: Lang) -> View {
             ChipRow {
                 label: l.pick("Default SM-DP+", "默认 SM-DP+"),
                 sub: None,
-                value: ch.default_smdp.clone().unwrap_or_else(dash),
+                value: ch.default_smdp.clone().unwrap_or_else(|| l.pick("Not set", "未设置").to_owned()),
             },
         ],
         _ => Vec::new(),

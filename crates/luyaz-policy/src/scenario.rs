@@ -33,6 +33,18 @@ pub const MISS_RECHECK_DELAY_SECS: u64 = 3;
 /// After this many consecutive scan failures, a scenario with Wi-Fi off is abandoned for away
 /// (fail open: the device is the phone's only uplink).
 pub const SCAN_FAILURES_BEFORE_FAIL_OPEN: u32 = 3;
+/// Leaving a scenario with its APs down is in doubt (a blip held, or a switch in the making):
+/// scan this often. The host ticks every 15 s, so this is every tick; with the APs down nobody
+/// is disturbed by it.
+pub const CONFIRM_SCAN_SECS: u64 = 15;
+/// A scan that sees the current Wi-Fi scenario remembers this many of the strongest other
+/// networks around it (its surroundings, [`RunState::neighbours`]).
+pub const NEIGHBOURS_KEPT: usize = 16;
+/// Fewer remembered neighbours than this is too little to judge the surroundings by.
+pub const NEIGHBOURS_MIN: usize = 6;
+/// A scan (both looks together) with fewer networks than this says nothing about the
+/// surroundings: a lift, or a partial scan.
+pub const SCAN_MIN_NETWORKS: usize = 8;
 
 /// Paths a scenario is allowed to drive. An allow-list: eSIM, reboot, factory reset and
 /// everything about the cellular network itself are absent on purpose.
@@ -72,8 +84,10 @@ pub struct Params {
     /// leaving (nobody walks out of a -40 dBm room between two scans).
     #[cfg_attr(feature = "serde", serde(default = "default_blip_strong"))]
     pub blip_strong_dbm: f64,
-    /// How long such a blip is held: absent scans count as misses only once this many seconds
-    /// have passed since the networks were last seen.
+    /// How long such a blip is held: absent scans may switch only once this many seconds have
+    /// passed since the networks were last seen (the held scans already count as misses, so the
+    /// first absent scan after the hold switches). The hold ends at once when the surroundings
+    /// have changed ([`Leave::Moved`]).
     #[cfg_attr(feature = "serde", serde(default = "default_blip_hold"))]
     pub blip_hold_secs: u64,
 }
@@ -85,7 +99,7 @@ fn default_blip_strong() -> f64 {
     -60.0
 }
 fn default_blip_hold() -> u64 {
-    300
+    120
 }
 
 impl Default for Params {
@@ -592,6 +606,14 @@ pub struct RunState {
     pub last_seen_at: Option<i64>,
     #[cfg_attr(feature = "serde", serde(default))]
     pub last_seen_dbm: Option<f64>,
+    /// The strongest other networks (BSSIDs, lower case, at most [`NEIGHBOURS_KEPT`]) of the
+    /// last scan that saw the current Wi-Fi-detected scenario well. A router blip leaves them
+    /// in place; walking out does not. Cleared on a switch like `last_seen_at`.
+    #[cfg_attr(
+        feature = "serde",
+        serde(default, skip_serializing_if = "Vec::is_empty")
+    )]
+    pub neighbours: Vec<String>,
 }
 
 /// [`RunState::matched`].
@@ -834,8 +856,22 @@ pub enum Leave {
     Seen { dbm: f64 },
     /// Seen, but weaker than `leave_rssi_dbm`: counts as a miss.
     Weak { dbm: f64 },
-    /// Not seen, last seen strong `ago` seconds ago, within the hold: not a miss.
-    Blip { dbm: f64, ago: i64 },
+    /// Not seen, last seen strong `ago` seconds ago, within the hold, and the surroundings
+    /// still look the same (`neighbours`: remembered ones seen again / remembered, `None` when
+    /// there was too little to compare): counts towards leaving, but does not switch yet.
+    Blip {
+        dbm: f64,
+        ago: i64,
+        neighbours: Option<(usize, usize)>,
+    },
+    /// Not seen, last seen strong within the hold, but most of the remembered neighbours are
+    /// gone too: walking out, not a blip. A miss like [`Leave::Absent`].
+    Moved {
+        dbm: f64,
+        ago: i64,
+        kept: usize,
+        of: usize,
+    },
     /// Not seen, and no blip hold applies: a miss as before.
     Absent,
 }
@@ -852,11 +888,59 @@ pub fn leave_reading(cfg: &Config, st: &RunState, nets: &[Network], at: i64) -> 
             (Some(t), Some(dbm))
                 if dbm >= p.blip_strong_dbm && at - t < p.blip_hold_secs as i64 =>
             {
-                Leave::Blip { dbm, ago: at - t }
+                let ago = at - t;
+                match neighbours_kept(&st.neighbours, nets) {
+                    Some((kept, of)) if kept * 4 < of => Leave::Moved { dbm, ago, kept, of },
+                    neighbours => Leave::Blip {
+                        dbm,
+                        ago,
+                        neighbours,
+                    },
+                }
             }
             _ => Leave::Absent,
         },
     })
+}
+
+/// How many of the remembered neighbours `nets` shows again, out of how many; `None` when
+/// either side is too small to say anything ([`NEIGHBOURS_MIN`], [`SCAN_MIN_NETWORKS`]).
+pub fn neighbours_kept(remembered: &[String], nets: &[Network]) -> Option<(usize, usize)> {
+    if remembered.len() < NEIGHBOURS_MIN {
+        return None;
+    }
+    let mut seen: Vec<String> = nets.iter().map(|n| n.bssid.to_ascii_lowercase()).collect();
+    seen.sort();
+    seen.dedup();
+    if seen.len() < SCAN_MIN_NETWORKS {
+        return None;
+    }
+    let kept = remembered
+        .iter()
+        .filter(|b| seen.binary_search(b).is_ok())
+        .count();
+    Some((kept, remembered.len()))
+}
+
+/// The surroundings to remember from a scan that saw the scenario of `entries`: the strongest
+/// [`NEIGHBOURS_KEPT`] other networks, by BSSID.
+pub fn neighbours_of(entries: &[SsidEntry], nets: &[Network]) -> Vec<String> {
+    let mut others: Vec<&Network> = nets
+        .iter()
+        .filter(|n| !n.bssid.is_empty() && !entries.iter().any(|e| entry_matches(e, n)))
+        .collect();
+    others.sort_by(|a, b| b.signal.total_cmp(&a.signal));
+    let mut out: Vec<String> = Vec::new();
+    for n in others {
+        let b = n.bssid.to_ascii_lowercase();
+        if !out.contains(&b) {
+            out.push(b);
+            if out.len() == NEIGHBOURS_KEPT {
+                break;
+            }
+        }
+    }
+    out
 }
 
 /// "1m40s", "45s", "5m".
@@ -876,10 +960,23 @@ pub fn leave_note(id: &str, r: &Leave, p: &Params) -> Option<String> {
             "{id:?} weak: best {dbm:.0} dBm (leave below {:.0})",
             p.leave_rssi_dbm
         )),
-        Leave::Blip { dbm, ago } => Some(format!(
-            "{id:?} not seen, held as a blip: last seen {dbm:.0} dBm {} ago (hold {})",
+        Leave::Blip {
+            dbm,
+            ago,
+            neighbours,
+        } => Some(format!(
+            "{id:?} not seen, held as a blip: last seen {dbm:.0} dBm {} ago (hold {}){}",
             short_duration(*ago),
-            short_duration(p.blip_hold_secs as i64)
+            short_duration(p.blip_hold_secs as i64),
+            match neighbours {
+                Some((k, n)) => format!("; {k}/{n} neighbours still seen"),
+                None => String::new(),
+            }
+        )),
+        Leave::Moved { dbm, ago, kept, of } => Some(format!(
+            "{id:?} not seen and the surroundings changed: {kept}/{of} neighbours still seen \
+             (last seen {dbm:.0} dBm {} ago), not a blip",
+            short_duration(*ago)
         )),
         _ => None,
     }
@@ -914,13 +1011,20 @@ pub fn decide(st: &mut RunState, detected: &str, p: &Params) -> Option<String> {
 /// Seconds between scans (the engine's `scan_interval`). `charging` is only looked at
 /// on the away-on-battery/charger branch.
 pub fn scan_interval(cfg: &Config, current: &str, candidate: &str, charging: bool) -> u64 {
-    // APs down and nobody connected (what inhibit_sleep marks): scanning is free.
+    // APs down and nobody connected (what inhibit_sleep marks): scanning is free. Leaving is
+    // in doubt (a blip held, or a switch in the making): look every tick, since every scan
+    // here is time without Wi-Fi for whoever just walked out.
     if cfg
         .scenarios
         .iter()
         .any(|s| s.id == current && s.inhibit_sleep)
     {
-        return cfg.params.scan_interval_home_secs;
+        let home = cfg.params.scan_interval_home_secs;
+        return if candidate.is_empty() {
+            home
+        } else {
+            home.min(CONFIRM_SCAN_SECS)
+        };
     }
     // Nothing decided yet, or a switch in the making: confirm quickly.
     if current.is_empty() || !candidate.is_empty() {
@@ -1191,22 +1295,42 @@ pub fn step(i: &TickInput) -> TickOutcome {
 
     out.state.scan_failures = 0;
     match reading {
-        Some(Leave::Seen { dbm } | Leave::Weak { dbm }) => {
+        Some(Leave::Seen { dbm }) => {
+            out.state.last_seen_at = Some(out.state.last_scan);
+            out.state.last_seen_dbm = Some(dbm);
+            if let Some(entries) = ssid_entries(cfg, current) {
+                out.state.neighbours = neighbours_of(entries, nets_seen);
+            }
+        }
+        // Walking away already: keep the surroundings of the last good sighting.
+        Some(Leave::Weak { dbm }) => {
             out.state.last_seen_at = Some(out.state.last_scan);
             out.state.last_seen_dbm = Some(dbm);
         }
-        // A strong network gone between two scans: a router blip. Not a miss until the hold
-        // runs out; the counters and the matched network stay as they were.
-        Some(Leave::Blip { .. }) if detected != current => return out,
         _ => {}
     }
-    out.state.matched = next_matched(st.matched.as_ref(), &found, out.state.last_scan);
-    if let Some(id) = decide(&mut out.state, &detected, &cfg.params) {
+    // A strong network gone between two scans, surroundings unchanged: a router blip. The scan
+    // counts towards leaving (so the first absent scan after the hold switches, and the engine
+    // looks every tick meanwhile) but switches nothing; the matched network stays as it was.
+    let held = matches!(reading, Some(Leave::Blip { .. })) && detected != current;
+    if !held {
+        out.state.matched = next_matched(st.matched.as_ref(), &found, out.state.last_scan);
+    }
+    let to = decide(&mut out.state, &detected, &cfg.params);
+    if held {
+        return out;
+    }
+    if let Some(id) = to {
         // Entering a Wi-Fi scenario: the scan that brought it is its first sighting, so a
         // blip right after entering is held too ([`after_switch`] keeps it).
-        let best = ssid_entries(cfg, &id).and_then(|e| best_signal(e, nets_seen));
+        let entries = ssid_entries(cfg, &id);
+        let best = entries.and_then(|e| best_signal(e, nets_seen));
         out.state.last_seen_at = best.map(|_| out.state.last_scan);
         out.state.last_seen_dbm = best;
+        out.state.neighbours = match (entries, best) {
+            (Some(e), Some(_)) => neighbours_of(e, nets_seen),
+            _ => Vec::new(),
+        };
         out.intent = switch(&id);
     }
     out
@@ -1245,6 +1369,7 @@ pub fn after_switch(
     if !fresh {
         st.last_seen_at = None;
         st.last_seen_dbm = None;
+        st.neighbours.clear();
     }
     st.candidate.clear();
     st.hits = 0;

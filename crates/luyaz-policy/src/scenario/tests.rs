@@ -1120,43 +1120,170 @@ fn at_home(dbm: f64) -> Vec<Network> {
 }
 
 #[test]
-fn strong_signal_that_vanishes_for_four_minutes_is_a_blip() {
+fn strong_signal_that_vanishes_within_the_hold_is_a_blip() {
     let cfg = home_cfg();
     let mut st = tick_with(&cfg, &in_scenario("home", 0), 60, &at_home(-38.0));
     assert_eq!((st.last_seen_at, st.last_seen_dbm), (Some(60), Some(-38.0)));
-    for t in [120, 180, 240, 300] {
+    for (t, misses) in [(120, 1), (135, 2), (150, 3), (165, 4)] {
         st = tick_with(&cfg, &st, t, &[]);
-        assert_eq!((st.current.as_str(), st.misses), ("home", 0), "at {t}");
+        // held: counted, but no switch
+        assert_eq!((st.current.as_str(), st.misses), ("home", misses), "at {t}");
+        assert_eq!(
+            scan_interval(&cfg, &st.current, &st.candidate, false),
+            15,
+            "at {t}"
+        );
     }
     assert_eq!(
         leave_reading(&cfg, &st, &[], 160),
         Some(Leave::Blip {
             dbm: -38.0,
-            ago: 100
+            ago: 100,
+            neighbours: None
         })
     );
-    st = tick_with(&cfg, &st, 360, &at_home(-40.0));
-    assert_eq!((st.current.as_str(), st.last_seen_at), ("home", Some(360)));
+    st = tick_with(&cfg, &st, 180, &at_home(-40.0));
+    assert_eq!((st.current.as_str(), st.last_seen_at), ("home", Some(180)));
+    assert_eq!((st.misses, st.candidate.as_str()), (0, ""));
+    assert_eq!(scan_interval(&cfg, &st.current, &st.candidate, false), 60);
 }
 
 #[test]
-fn gone_longer_than_the_hold_leaves() {
+fn gone_longer_than_the_hold_leaves_on_the_first_scan_after_it() {
     let cfg = home_cfg();
     let mut st = tick_with(&cfg, &in_scenario("home", 0), 60, &at_home(-38.0));
+    let mut t = 60;
     let mut left = None;
-    for t in (120..=600).step_by(60) {
+    while left.is_none() && t < 1000 {
+        t += scan_interval(&cfg, &st.current, &st.candidate, false) as i64;
         st = tick_with(&cfg, &st, t, &[]);
-        if st.current == AWAY_ID && left.is_none() {
+        if st.current == AWAY_ID {
             left = Some(t);
         }
     }
-    // hold until 60+300; misses at 360 and 420
-    assert_eq!(left, Some(420));
+    // first miss at 120, then every 15 s; the hold ends at 60+120
+    assert_eq!(left, Some(180));
     assert_eq!(
-        (st.last_seen_at, st.last_seen_dbm),
-        (None, None),
+        (st.last_seen_at, st.last_seen_dbm, st.neighbours.len()),
+        (None, None, 0),
         "cleared on switch"
     );
+}
+
+/// `n` networks named `prefix` with BSSIDs `prefix:00` … and signals from -45 down.
+fn around(prefix: &str, n: usize) -> Vec<Network> {
+    (0..n)
+        .map(|i| net(prefix, &format!("{prefix}:{i:02x}"), -45.0 - i as f64))
+        .collect()
+}
+
+fn with(mut a: Vec<Network>, b: Vec<Network>) -> Vec<Network> {
+    a.extend(b);
+    a
+}
+
+#[test]
+fn a_seen_scan_remembers_the_strongest_neighbours() {
+    let cfg = home_cfg();
+    let nets = with(at_home(-40.0), around("nb", 30));
+    let st = tick_with(&cfg, &in_scenario("home", 0), 60, &nets);
+    assert_eq!(st.neighbours.len(), NEIGHBOURS_KEPT);
+    assert_eq!(st.neighbours[0], "nb:00");
+    assert!(
+        !st.neighbours.iter().any(|b| b == HOME_BSSID),
+        "not the home network itself"
+    );
+    // weak: keeps the last good surroundings
+    let st2 = tick_with(&cfg, &st, 120, &with(at_home(-75.0), around("x", 30)));
+    assert_eq!(st2.neighbours, st.neighbours);
+}
+
+#[test]
+fn walking_out_from_a_strong_signal_leaves_within_two_scans() {
+    // 11-08: last seen -52 dBm at the door, then gone with the street around; it took 7 min.
+    let cfg = home_cfg();
+    let st = tick_with(
+        &cfg,
+        &in_scenario("home", -100),
+        0,
+        &with(at_home(-52.0), around("nb", 40)),
+    );
+    let outside = around("street", 40);
+    assert_eq!(
+        leave_reading(&cfg, &st, &outside, 71),
+        Some(Leave::Moved {
+            dbm: -52.0,
+            ago: 71,
+            kept: 0,
+            of: 16
+        })
+    );
+    let st = tick_with(&cfg, &st, 71, &outside);
+    assert_eq!((st.current.as_str(), st.misses), ("home", 1));
+    let next = 71 + scan_interval(&cfg, &st.current, &st.candidate, false) as i64;
+    assert_eq!(next, 86);
+    let st = tick_with(&cfg, &st, next, &outside);
+    assert_eq!(st.current, AWAY_ID);
+}
+
+#[test]
+fn a_router_blip_with_the_same_neighbours_is_held() {
+    let cfg = home_cfg();
+    let st = tick_with(
+        &cfg,
+        &in_scenario("home", -100),
+        0,
+        &with(at_home(-40.0), around("nb", 40)),
+    );
+    // a partial scan: only 10 of the networks, home gone
+    let blip: Vec<Network> = around("nb", 40).into_iter().step_by(4).collect();
+    assert_eq!(blip.len(), 10);
+    let r = leave_reading(&cfg, &st, &blip, 60).unwrap();
+    assert_eq!(
+        r,
+        Leave::Blip {
+            dbm: -40.0,
+            ago: 60,
+            neighbours: Some((4, 16))
+        }
+    );
+    let mut st = st;
+    for t in [60, 75, 90] {
+        st = tick_with(&cfg, &st, t, &around("nb", 40));
+        assert_eq!(st.current, "home", "at {t}");
+    }
+    st = tick_with(&cfg, &st, 105, &with(at_home(-41.0), around("nb", 40)));
+    assert_eq!((st.current.as_str(), st.misses), ("home", 0));
+}
+
+#[test]
+fn a_lift_says_nothing_and_the_street_after_it_leaves_at_once() {
+    let cfg = home_cfg();
+    let st = tick_with(
+        &cfg,
+        &in_scenario("home", -100),
+        0,
+        &with(at_home(-45.0), around("nb", 40)),
+    );
+    // in the lift: three networks, too few to judge
+    let lift = around("lift", 3);
+    let st = tick_with(&cfg, &st, 60, &lift);
+    assert_eq!((st.current.as_str(), st.misses), ("home", 1));
+    // the street: the held scan already counted, so this one switches
+    let st = tick_with(&cfg, &st, 75, &around("street", 30));
+    assert_eq!(st.current, AWAY_ID);
+}
+
+#[test]
+fn neighbours_need_enough_on_both_sides() {
+    let few: Vec<String> = (0..5).map(|i| format!("nb:{i:02x}")).collect();
+    assert_eq!(neighbours_kept(&few, &around("x", 30)), None);
+    let many: Vec<String> = (0..16).map(|i| format!("nb:{i:02x}")).collect();
+    assert_eq!(neighbours_kept(&many, &around("nb", 7)), None);
+    assert_eq!(neighbours_kept(&many, &around("nb", 8)), Some((8, 16)));
+    // upper case from the scan still matches
+    let upper: Vec<Network> = around("NB", 10);
+    assert_eq!(neighbours_kept(&many, &upper), Some((10, 16)));
 }
 
 #[test]
@@ -1227,12 +1354,40 @@ fn leave_notes_say_why() {
             "home",
             &Leave::Blip {
                 dbm: -38.0,
-                ago: 100
+                ago: 100,
+                neighbours: None
             },
             &p
         )
         .unwrap(),
-        r#""home" not seen, held as a blip: last seen -38 dBm 1m40s ago (hold 5m)"#
+        r#""home" not seen, held as a blip: last seen -38 dBm 1m40s ago (hold 2m)"#
+    );
+    assert_eq!(
+        leave_note(
+            "home",
+            &Leave::Blip {
+                dbm: -38.0,
+                ago: 75,
+                neighbours: Some((12, 16))
+            },
+            &p
+        )
+        .unwrap(),
+        r#""home" not seen, held as a blip: last seen -38 dBm 1m15s ago (hold 2m); 12/16 neighbours still seen"#
+    );
+    assert_eq!(
+        leave_note(
+            "home",
+            &Leave::Moved {
+                dbm: -52.0,
+                ago: 71,
+                kept: 1,
+                of: 16
+            },
+            &p
+        )
+        .unwrap(),
+        r#""home" not seen and the surroundings changed: 1/16 neighbours still seen (last seen -52 dBm 1m11s ago), not a blip"#
     );
     assert_eq!(leave_note("home", &Leave::Absent, &p), None);
 }
@@ -1281,6 +1436,10 @@ fn a_blip_right_after_entering_is_held() {
         (Some(360), Some(-38.0))
     );
     let st = tick_with(&cfg, &st, 420, &[]);
-    let st = tick_with(&cfg, &st, 480, &[]);
-    assert_eq!((st.current.as_str(), st.misses), ("home", 0));
+    let st = tick_with(&cfg, &st, 435, &[]);
+    assert_eq!(
+        (st.current.as_str(), st.misses),
+        ("home", 2),
+        "held, counted"
+    );
 }

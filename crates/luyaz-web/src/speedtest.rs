@@ -675,6 +675,7 @@ struct Page {
     shell: crate::shell::Shell,
     leaves: Vec<(String, String)>,
     servers: String,
+    ladder: String,
     config_signals: String,
     config_error: Option<String>,
 }
@@ -708,7 +709,12 @@ pub async fn page(State(app): State<Shared>, req: axum::extract::Request) -> Res
         ),
         Err(e) => (Value::Null, Some(e.text(ctx.lang))),
     };
+    let ladder = ladder_of(
+        crate::agent::get(&app, &p.who, "/api/ladder/result").await.ok().as_ref(),
+        ctx.lang,
+    );
     let html = Page {
+        ladder: LadderFrag { v: &ladder }.render().unwrap(),
         shell,
         config_signals: json!({"libreconfig":serde_json::to_string_pretty(&config_value).unwrap_or_default(),"askconfig":false}).to_string(),
         config_error,
@@ -730,6 +736,23 @@ pub async fn page(State(app): State<Shared>, req: axum::extract::Request) -> Res
         html.into_bytes(),
         "no-store",
     )
+}
+
+/// GET /tools/speedtest/ladder.json?id=: a load ladder result (the latest) with its raw probes.
+pub async fn ladder_json(
+    State(app): State<Shared>,
+    Query(q): Query<std::collections::HashMap<String, String>>,
+    req: axum::extract::Request,
+) -> Response {
+    let who = Caller::of(&app, &req);
+    let path = match q.get("id").and_then(|v| v.parse::<u64>().ok()) {
+        Some(id) => format!("/api/ladder/result?id={id}"),
+        None => "/api/ladder/result".into(),
+    };
+    match crate::agent::get(&app, &who, &path).await {
+        Ok(v) => axum::Json(v).into_response(),
+        Err(_) => axum::http::StatusCode::NOT_FOUND.into_response(),
+    }
 }
 
 pub async fn events(
@@ -986,9 +1009,449 @@ pub async fn servers(
     Sse::new(stream)
 }
 
+pub(crate) struct LadderStep {
+    name: &'static str,
+    /// the median, the row's value
+    delay: String,
+    rate: String,
+    /// the tail, jitter and timeouts
+    detail: String,
+}
+pub(crate) struct LadderRun {
+    headline: String,
+    steps: Vec<LadderStep>,
+    facts: Vec<String>,
+    points: String,
+    caption: String,
+    /// `(svg y, % from the top, label)` for the delay grid
+    ticks: Vec<(f64, f64, String)>,
+    /// the shaded steps (2 and 4): `(x, width)` in the svg's 600
+    bands: Vec<(f64, f64)>,
+    /// each step's name and share of the width, under the chart
+    spans: Vec<(&'static str, f64)>,
+    /// a short mark at the top for each probe unanswered in 2 s
+    lost: String,
+    rate: Option<LadderRate>,
+}
+pub(crate) struct LadderRate {
+    top: String,
+    down: String,
+    up: String,
+}
+pub(crate) struct Ladder {
+    /// on the records page itself: no link to it
+    pub(crate) here: bool,
+    l: Lang,
+    run: Option<LadderRun>,
+}
+#[derive(Template)]
+#[template(path = "speedtest_ladder.html")]
+pub(crate) struct LadderFrag<'a> {
+    pub(crate) v: &'a Ladder,
+}
+
+/// The chart's top: probes above this draw at the top.
+pub(crate) const LADDER_CAP_MS: f64 = 1000.0;
+
+/// The load that fell furthest short in a step: (is upload, Mbps).
+fn ladder_short(step: &Value) -> Option<(bool, f64)> {
+    let share = |got: &str, want: &str| Some(step[got].as_f64().unwrap_or(0.0) / step[want].as_f64()?);
+    let (up, down) = (share("up_mbps", "target_up_mbps"), share("down_mbps", "target_down_mbps"));
+    let upload = match (up, down) {
+        (Some(u), Some(d)) => u <= d,
+        (Some(_), None) => true,
+        (None, Some(_)) => false,
+        _ => return None,
+    };
+    let key = if upload { "up_mbps" } else { "down_mbps" };
+    Some((upload, step[key].as_f64().unwrap_or(0.0)))
+}
+
+fn has(list: &Value, n: u64) -> bool {
+    list.as_array().is_some_and(|a| a.iter().any(|x| x.as_u64() == Some(n)))
+}
+
+/// The same words as the touch screen (touch-ui ladder.rs): about this moment, nothing more.
+/// What step `n` (1-based) loaded. A step without its kind is from before kinds: idle, down,
+/// both, recovery by its place.
+pub(crate) fn ladder_kind(r: &Value, n: u64) -> &str {
+    const OLD: [&str; 4] = ["idle", "down", "both", "recovery"];
+    let i = n.saturating_sub(1) as usize;
+    r["steps"][i]["kind"]
+        .as_str()
+        .unwrap_or_else(|| if r["steps"][i].is_object() { OLD.get(i).copied().unwrap_or("") } else { "" })
+}
+pub(crate) fn ladder_headline(r: &Value, l: Lang) -> String {
+    let f = &r["findings"];
+    if let Some(a) = r["aborted"].as_str() {
+        return match a {
+            "stopped" => l.pick("Stopped, this run doesn't count", "已停止，这次不算数"),
+            "network_down" => l.pick("Network dropped, this run doesn't count", "网络中断，这次不算数"),
+            "overheated" => l.pick("Device overheated, stopped", "设备过热，已停止"),
+            "heat_unknown" => l.pick("Can't read temperature, stopped", "读不到温度，已停止"),
+            "low_battery" => l.pick("Battery too low, stopped", "电量太低，已停止"),
+            "became_roaming" => l.pick("Roaming began, stopped", "开始漫游了，已停止"),
+            _ => l.pick("Didn't finish, doesn't count", "这次没跑完，不算数"),
+        }
+        .into();
+    }
+    if let Some(n) = f["unresponsive_steps"][0].as_u64() {
+        return match ladder_kind(r, n) {
+            "down" => l.pick("Right now a video load leaves the network unanswering", "此刻一看影片，网络就没反应了"),
+            "up" => l.pick("Right now upload alone leaves the network unanswering", "此刻只上传，网络就没反应了"),
+            _ => l.pick("Right now upload leaves the network unanswering", "此刻一加上传，网络就没反应了"),
+        }
+        .into();
+    }
+    let cell_moved = r["notes"]
+        .as_array()
+        .is_some_and(|a| a.iter().any(|n| n["code"] == "cell_changed" || n["code"] == "rat_changed"));
+    if f["no_baseline"] == true && cell_moved {
+        return l.pick("The cell changed during the test, no conclusion", "测试时换了基站，这次不下结论").into();
+    }
+    let idle_busy = r["notes"]
+        .as_array()
+        .is_some_and(|a| a.iter().any(|n| n["code"] == "idle_busy"));
+    if f["no_baseline"] == true && idle_busy {
+        return l
+            .pick("Other traffic at idle, no conclusion", "空闲时一直有别的流量，这次不下结论")
+            .into();
+    }
+    if f["no_baseline"] == true {
+        return l.pick("Idle baseline unusable, no conclusion", "空闲基准没量好，这次不下结论").into();
+    }
+    let step = |n: u64| &r["steps"][(n - 1) as usize];
+    if let Some(n) = f["first_slow_step"].as_u64() {
+        if has(&f["queued_steps"], n)
+            && let Some((up, mbps)) = ladder_short(step(n))
+        {
+            return match (l, up) {
+                (Lang::En, true) => format!("Right now upload queues at {mbps:.0} Mbps"),
+                (Lang::En, false) => format!("Right now download queues at {mbps:.0} Mbps"),
+                (Lang::Zh, true) => format!("此刻上传跑到 {mbps:.0} Mbps 就开始排队"),
+                (Lang::Zh, false) => format!("此刻下载跑到 {mbps:.0} Mbps 就开始排队"),
+            };
+        }
+        return match ladder_kind(r, n) {
+            "down" => l.pick("Right now it slows with a video load", "此刻一看影片，反应就变慢"),
+            "up" => l.pick("Right now it slows with upload alone", "此刻只上传，反应就变慢"),
+            _ => l.pick("Right now it slows once upload starts", "此刻一加上传，反应就变慢"),
+        }
+        .into();
+    }
+    if let Some(n) = f["unloaded_steps"][0].as_u64()
+        && let Some((up, mbps)) = ladder_short(step(n))
+    {
+        return match (l, up) {
+            (Lang::En, true) => format!("Right now upload reached only {mbps:.0} Mbps, no conclusion here"),
+            (Lang::En, false) => format!("Right now download reached only {mbps:.0} Mbps, no conclusion here"),
+            (Lang::Zh, true) => format!("此刻上传只跑到 {mbps:.0} Mbps，这一步不下结论"),
+            (Lang::Zh, false) => format!("此刻下载只跑到 {mbps:.0} Mbps，这一步不下结论"),
+        };
+    }
+    if r["steps"].as_array().is_some_and(|a| a.iter().any(|s| s["failed"] == true)) {
+        return l.pick("A step failed, no conclusion", "有一步没跑成，不下结论").into();
+    }
+    let n = r["steps"].as_array().map_or(0, Vec::len) as u64;
+    if (1..=n).filter(|i| matches!(ladder_kind(r, *i), "down" | "both" | "up")).count() > 2 {
+        return l.pick("Right now none of the three loads slowed it", "此刻这三档负载下，反应都没变慢").into();
+    }
+    l.pick("Right now neither load slowed it", "此刻这两档负载下，反应没变慢").into()
+}
+
+/// `GET /api/ladder/result`'s body as the page shows it.
+pub(crate) fn ladder_of(body: Option<&Value>, l: Lang) -> Ladder {
+    let wrap = body.map(|b| &b["result"]).filter(|w| w.is_object());
+    let run = wrap.map(|w| {
+        let r = &w["report"];
+        let name = |k: &str| match k {
+            "idle" => l.pick("Idle", "空闲"),
+            "down" => l.pick("Video load", "看影片的负载"),
+            "both" => l.pick("Plus upload", "再加上传"),
+            "up" => l.pick("Upload only", "只上传"),
+            _ => l.pick("After stopping", "停止后"),
+        };
+        let steps = r["steps"]
+            .as_array()
+            .map(Vec::as_slice)
+            .unwrap_or_default()
+            .iter()
+            .enumerate()
+            .map(|(i, s)| {
+                let name = name(ladder_kind(r, i as u64 + 1));
+                let st = &s["stats"];
+                let ms = |k: &str| st[k].as_f64().map(|v| format!("{v:.0}"));
+                let delay = ms("p50_ms").map_or("--".into(), |a| format!("P50 {a} ms"));
+                let mut detail = Vec::new();
+                match (ms("p90_ms"), ms("p95_ms")) {
+                    (Some(b), Some(c)) => detail.push(format!("P90 {b} · P95 {c} ms")),
+                    (Some(b), None) => detail.push(format!("P90 {b} ms")),
+                    _ => {}
+                }
+                let mut rate = Vec::new();
+                for (word, got, want) in [
+                    (l.pick("Down", "下载"), "down_mbps", "target_down_mbps"),
+                    (l.pick("Up", "上传"), "up_mbps", "target_up_mbps"),
+                ] {
+                    if let Some(w) = s[want].as_f64() {
+                        rate.push(format!("{word} {:.1} / {w:.0} Mbps", s[got].as_f64().unwrap_or(0.0)));
+                    }
+                }
+                if let Some(x) = st["increase_ms"].as_f64() {
+                    detail.push(match l {
+                        Lang::En => format!("{x:.0} ms over idle"),
+                        Lang::Zh => format!("比空闲多 {x:.0} ms"),
+                    });
+                }
+                if let Some(j) = st["jitter_ms"].as_f64() {
+                    detail.push(match l {
+                        Lang::En => format!("jitter {j:.0} ms"),
+                        Lang::Zh => format!("抖动 {j:.0} ms"),
+                    });
+                }
+                if let (Some(n), Some(lost)) = (st["probes"].as_u64().filter(|n| *n > 0), st["timeouts"].as_u64().filter(|t| *t > 0)) {
+                    let pct = lost as f64 * 100.0 / n as f64;
+                    detail.push(match l {
+                        Lang::En => format!("{lost} of {n} probes unanswered in 2 s ({pct:.0}%)"),
+                        Lang::Zh => format!("{n} 次探测 {lost} 次 2 秒没回应（{pct:.0}%）"),
+                    });
+                }
+                let sep = l.pick(", ", "，");
+                LadderStep { name, delay, rate: rate.join(sep), detail: detail.join(sep) }
+            })
+            .collect();
+        let mut facts = Vec::new();
+        let f = &r["findings"];
+        match (f["recovered"].as_bool(), f["recovery_ms"].as_f64()) {
+            (Some(true), Some(ms)) => facts.push(match l {
+                Lang::En => format!("Recovered {:.1} s after the load stopped.", ms / 1000.0),
+                Lang::Zh => format!("负载停止后 {:.1} 秒恢复。", ms / 1000.0),
+            }),
+            (Some(false), _) => facts.push(l.pick("Did not recover in the window.", "窗口内没恢复。").into()),
+            _ => {}
+        }
+        let notes = r["notes"].as_array().map(Vec::as_slice).unwrap_or_default();
+        let noted = |c: &str| notes.iter().any(|n| n["code"] == c);
+        if noted("cell_changed") || noted("rat_changed") {
+            facts.push(l.pick("The cell changed; no conclusion from there on.", "测试中切了小区，之后的步骤不下结论。").into());
+        }
+        if noted("other_traffic") {
+            facts.push(l.pick("Other traffic ran; numbers may read worse.", "期间有别的流量，数字可能偏悲观。").into());
+        }
+        // with both directions slower: is it the upload by itself, or the two together?
+        let n_steps = r["steps"].as_array().map_or(0, Vec::len) as u64;
+        let step_of = |k: &str| (1..=n_steps).find(|n| ladder_kind(r, *n) == k);
+        if let (Some(both), Some(up)) = (step_of("both"), step_of("up"))
+            && has(&f["slow_steps"], both)
+            && !has(&f["unresponsive_steps"], up)
+            && !has(&f["unloaded_steps"], up)
+            && r["steps"][(up - 1) as usize]["stats"]["p50_ms"].is_number()
+        {
+            facts.push(if has(&f["slow_steps"], up) {
+                l.pick("Upload alone slows it too: the upload itself queues.", "只上传也变慢：是上传本身在排队。")
+            } else {
+                l.pick("Upload alone did not slow it: only both together queue.", "只上传时没变慢：是上下一起才排队。")
+            }
+            .into());
+        }
+        if noted("idle_redone") && f["no_baseline"] != true {
+            facts.push(l.pick("Idle was disturbed and measured again.", "空闲时被打断过，已重新量。").into());
+        }
+        if let Some(b) = w["counter_bytes"].as_f64() {
+            facts.push(match l {
+                Lang::En => format!("Used about {:.0} MB.", b / 1e6),
+                Lang::Zh => format!("这次用了约 {:.0} MB。", b / 1e6),
+            });
+        }
+        let samples = r["samples"].as_array().map(Vec::as_slice).unwrap_or_default();
+        // the steps' spans when the result has them (an idle step measured again leaves probes
+        // before its start: those are left out); before that, the probes from 0
+        let span = |s: &Value| Some((s["from_ms"].as_f64()?, s["to_ms"].as_f64()?)).filter(|(a, b)| b > a);
+        let spans: Vec<Option<(f64, f64)>> = r["steps"].as_array().map(Vec::as_slice).unwrap_or_default().iter().map(span).collect();
+        let from = spans.first().copied().flatten().map_or(0.0, |(a, _)| a);
+        let to = spans
+            .iter()
+            .flatten()
+            .map(|(_, b)| *b)
+            .fold(None, |m: Option<f64>, b| Some(m.map_or(b, |m| m.max(b))))
+            .unwrap_or_else(|| samples.iter().filter_map(|s| s[0].as_f64()).fold(1.0, f64::max));
+        let width = (to - from).max(1.0);
+        let x = |t: f64| ((t - from) / width * 600.0).clamp(0.0, 600.0);
+        let within = |t: f64| t >= from && t <= to;
+        let points = samples
+            .iter()
+            .filter_map(|s| {
+                let (t, ms) = (s[0].as_f64()?, s[1].as_f64()?);
+                within(t).then(|| format!("{:.1},{:.1}", x(t), 120.0 - ms.min(LADDER_CAP_MS) / LADDER_CAP_MS * 120.0))
+            })
+            .collect::<Vec<_>>()
+            .join(" ");
+        let lost = samples
+            .iter()
+            .filter(|s| s[2].as_u64() == Some(1))
+            .filter_map(|s| s[0].as_f64().filter(|t| within(*t)))
+            .map(|t| format!("M{:.1} 0V10", x(t)))
+            .collect::<String>();
+        let ticks = [250.0, 500.0, 750.0, 1000.0]
+            .iter()
+            .map(|ms| {
+                let y = 120.0 - ms / LADDER_CAP_MS * 120.0;
+                (y, y / 120.0 * 100.0, format!("{ms:.0}"))
+            })
+            .collect();
+        let short_name = |k: &str| match k {
+            "idle" => l.pick("Idle", "空闲"),
+            "down" => l.pick("Video", "看影片"),
+            "both" => l.pick("+Upload", "加上传"),
+            "up" => l.pick("Up only", "只上传"),
+            _ => l.pick("Recovery", "恢复"),
+        };
+        let known: Vec<(f64, f64)> = spans.iter().flatten().copied().collect();
+        let (mut bands, mut name_spans) = (Vec::new(), Vec::new());
+        if known.len() == spans.len() && known.len() >= 2 {
+            for (i, (a, b)) in known.iter().enumerate() {
+                // each step runs to where the next begins, so the names line up with the bands
+                let end = known.get(i + 1).map_or(*b, |n| n.0);
+                if i % 2 == 1 {
+                    bands.push((x(*a), x(end) - x(*a)));
+                }
+                name_spans.push((short_name(ladder_kind(r, i as u64 + 1)), (x(end) - x(*a)) / 6.0));
+            }
+        }
+        let rates: Vec<(f64, f64, f64)> = r["rates"]
+            .as_array()
+            .map(Vec::as_slice)
+            .unwrap_or_default()
+            .iter()
+            .filter_map(|v| Some((v[0].as_f64()?, v[1].as_f64()? / 1e3, v[2].as_f64()? / 1e3)))
+            .filter(|v| within(v.0))
+            .collect();
+        let rate = (!rates.is_empty()).then(|| {
+            let peak = rates.iter().map(|v| v.1.max(v.2)).fold(1.0, f64::max);
+            let top = (peak / 10.0).ceil() * 10.0;
+            let line = |pick: fn(&(f64, f64, f64)) -> f64| {
+                rates
+                    .iter()
+                    .map(|v| format!("{:.1},{:.1}", x(v.0), 60.0 - pick(v).min(top) / top * 60.0))
+                    .collect::<Vec<_>>()
+                    .join(" ")
+            };
+            LadderRate { top: format!("{top:.0} Mbps"), down: line(|v| v.1), up: line(|v| v.2) }
+        });
+        let caption = match l {
+            Lang::En => format!(
+                "{} probes. Each step's figures are of 250 ms windows, each the slowest probe in it; jitter is the mean change from one answered probe to the next; a mark at the top is a probe unanswered in 2 s (not packet loss: TCP resends hide that).",
+                samples.len()
+            ),
+            Lang::Zh => format!(
+                "{} 次探测。每步的数字取自每 250 ms 里最慢的一次探测；抖动是相邻两次有回应的探测相差的平均；顶上的短线是 2 秒内没回应的探测（不是丢包：TCP 会重传，看不到丢包）。",
+                samples.len()
+            ),
+        };
+        LadderRun {
+            headline: ladder_headline(r, l),
+            steps,
+            facts,
+            points,
+            caption,
+            ticks,
+            bands,
+            spans: name_spans,
+            lost,
+            rate,
+        }
+    });
+    Ladder { here: false, l, run }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_ladder_result_reads_as_facts_about_this_moment() {
+        let body = json!({"result":{"counter_bytes":152000000.0,"report":{"aborted":null,
+            "findings":{"first_slow_step":3,"queued_steps":[3],"unloaded_steps":[],"recovered":true,"recovery_ms":500},
+            "notes":[{"code":"other_traffic"}],
+            "samples":[[0,46,0],[1000,2000,1]],
+            "steps":[{"stats":{"p50_ms":46.0,"p90_ms":53.0}},
+                {"stats":{"p50_ms":47.0,"p90_ms":56.0},"down_mbps":25.0,"target_down_mbps":25.0},
+                {"stats":{"p50_ms":194.0,"p90_ms":992.0},"down_mbps":25.0,"target_down_mbps":25.0,"up_mbps":11.4,"target_up_mbps":30.0},
+                {"stats":{"p50_ms":47.0,"p90_ms":60.0}}]}}});
+        let v = ladder_of(Some(&body), Lang::Zh);
+        let html = LadderFrag { v: &v }.render().unwrap();
+        assert!(html.contains("此刻上传跑到 11 Mbps 就开始排队"), "{html}");
+        assert!(html.contains("没测 Wi-Fi"), "{html}");
+        assert!(html.contains("P50 194 ms"), "{html}");
+        assert!(html.contains("P90 992 ms"), "{html}");
+        assert!(html.contains("上传 11.4 / 30 Mbps"), "{html}");
+        assert!(html.contains("这次用了约 152 MB"), "{html}");
+        // a lost probe stays on the chart, at the top
+        assert!(html.contains("600.0,0.0"), "{html}");
+    }
+    #[test]
+    fn a_ladder_chart_has_its_steps_lost_probes_and_rates() {
+        let body = json!({"result":{"report":{"aborted":null,
+            "findings":{"first_slow_step":null,"queued_steps":[],"unloaded_steps":[]},
+            "notes":[],
+            // a probe before step 1 (an idle step measured again) stays off the chart
+            "samples":[[0,90,0],[1000,40,0],[2500,2000,1],[3500,45,0]],
+            "rates":[[2000,25000,0],[3000,24000,11400]],
+            "steps":[{"from_ms":1000,"to_ms":2000,"stats":{"p50_ms":40.0,"p90_ms":44.0,"p95_ms":45.0,"probes":4,"timeouts":0,"jitter_ms":3.0}},
+                {"from_ms":2000,"to_ms":3000,"stats":{"p50_ms":47.0,"p90_ms":56.0,"p95_ms":60.0,"probes":4,"timeouts":1,"jitter_ms":12.0},"down_mbps":25.0,"target_down_mbps":25.0},
+                {"from_ms":3000,"to_ms":4000,"stats":{"p50_ms":47.0,"p90_ms":56.0,"p95_ms":60.0}},
+                {"from_ms":4000,"to_ms":5000,"stats":{"p50_ms":47.0,"p90_ms":56.0,"p95_ms":60.0}}]}}});
+        let v = ladder_of(Some(&body), Lang::Zh);
+        let html = LadderFrag { v: &v }.render().unwrap();
+        assert!(html.contains("P90 56 · P95 60 ms，抖动 12 ms，4 次探测 1 次 2 秒没回应（25%）"), "{html}");
+        assert!(!html.contains("0.0,108"), "the probe before step 1 is drawn: {html}");
+        assert!(html.contains("M225.0 0V10"), "{html}");
+        // steps 2 and 4 shaded; the names share the width
+        assert!(html.contains(r#"<rect x="150" y="0" width="150" height="120""#), "{html}");
+        assert!(!html.contains("0 次 2 秒没回应"), "{html}");
+        assert!(html.contains(r#"<span style="width:25%">加上传</span>"#), "{html}");
+        assert!(html.contains("图顶 30 Mbps"), "{html}");
+    }
+    #[test]
+    fn the_upload_only_step_has_its_name_headline_and_fact() {
+        let step = |kind: &str, a: u32, b: u32| json!({"kind": kind, "from_ms": a, "to_ms": b, "stats": {"p50_ms": 50.0}});
+        let run = |slow: Value, first: u64| {
+            json!({"result":{"report":{"aborted":null,
+                "findings":{"first_slow_step":first,"slow_steps":slow,"queued_steps":[],"unloaded_steps":[]},
+                "notes":[],"samples":[[0,40,0],[5000,40,0]],
+                "steps":[step("idle",0,1000), step("down",1000,2000), step("both",2000,3000), step("up",3000,4000), step("recovery",4000,5000)]}}})
+        };
+        let html = |b: Value| {
+            let v = ladder_of(Some(&b), Lang::Zh);
+            LadderFrag { v: &v }.render().unwrap()
+        };
+        let h = html(run(json!([3]), 3));
+        assert!(h.contains("只上传</span>"), "{h}");
+        assert!(h.contains("只上传时没变慢：是上下一起才排队。"), "{h}");
+        assert!(h.contains(r#"<span style="width:20%">只上传</span>"#), "{h}");
+        let h = html(run(json!([4]), 4));
+        assert!(h.contains("此刻只上传，反应就变慢"), "{h}");
+    }
+    #[test]
+    fn a_busy_idle_says_why_and_a_redone_one_says_it_was_redone() {
+        let run = |no_base: bool, notes: Value| {
+            let body = json!({"result":{"report":{"aborted":null,
+                "findings":{"no_baseline":no_base,"queued_steps":[],"unloaded_steps":[]},
+                "notes":notes,"samples":[],"steps":[]}}});
+            let v = ladder_of(Some(&body), Lang::Zh);
+            LadderFrag { v: &v }.render().unwrap()
+        };
+        let busy = run(true, json!([{"code":"idle_redone"},{"code":"idle_redone"},{"code":"idle_busy"}]));
+        assert!(busy.contains("空闲时一直有别的流量，这次不下结论"), "{busy}");
+        assert!(!busy.contains("已重新量"), "{busy}");
+        let redone = run(false, json!([{"code":"idle_redone"}]));
+        assert!(redone.contains("空闲时被打断过，已重新量"), "{redone}");
+    }
+    #[test]
+    fn no_ladder_run_says_where_to_start_one() {
+        let v = ladder_of(None, Lang::En);
+        assert!(LadderFrag { v: &v }.render().unwrap().contains("touch screen"));
+    }
 
     fn got(p: Value) -> Got {
         Got {
@@ -1229,7 +1692,7 @@ mod tests {
         assert!(v.roam_full());
         let html = Leaves { v: &v }.render().unwrap();
         assert!(html.contains("$ask = false; $askFull = true") && html.contains("仍要完整测速"));
-        assert!(html.contains("走漫游流量，约 30 秒 · 最多 750 MB") && html.contains("$roamFull = true; @post"));
+        assert!(html.contains("走漫游流量，约 30 秒，最多 750 MB") && html.contains("$roamFull = true; @post"));
         // roaming not read yet: a capped last run offers it; home now does not
         g.net = None;
         g.prog = Some(v2_done(json!({"mode":"coarse","roaming_capped":true,"verdict":null})));

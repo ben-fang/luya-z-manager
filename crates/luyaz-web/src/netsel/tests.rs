@@ -85,7 +85,7 @@ fn net_view_status_jobs_and_results() {
     let j = Ok(Jobs::of(&ni, Lang::En));
     let v = hub.read(|st| net_view(st, Some(&j), Lang::En));
     assert_eq!((v.tone, v.state.as_str()), ("ok", "Connected"));
-    assert_eq!(v.reason, "IPv4 + IPv6 · Data roaming is allowed.");
+    assert_eq!(v.reason, "IPv4 + IPv6. Data roaming is allowed.");
     let ops = v.ops.clone().unwrap();
     assert_eq!(ops[0].name, "Chunghwa");
     assert_eq!((ops[1].plmn.as_str(), ops[1].rat.as_str()), ("46697", "7"), "only digits / letters go into the URL");

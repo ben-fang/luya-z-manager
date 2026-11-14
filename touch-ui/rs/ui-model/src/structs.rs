@@ -963,3 +963,100 @@ fn minus_one() -> i32 {
 fn is_zero64(v: &i64) -> bool {
     *v == 0
 }
+
+/// One step of a load ladder result (`/api/ladder/result`).
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct ladder_step_t {
+    /// idle, down, both, up, recovery (a result from before kinds: filled in by its place)
+    pub kind: String,
+    pub p50_ms: Option<f64>,
+    pub down_mbps: Option<f64>,
+    pub up_mbps: Option<f64>,
+    pub target_down_mbps: Option<f64>,
+    pub target_up_mbps: Option<f64>,
+    pub short_of_target: bool,
+    pub failed: bool,
+    /// probes sent in the step, and those with no answer within 2 s
+    pub probes: i32,
+    pub timeouts: i32,
+}
+
+/// The whole run in fixed columns, from the core: `-1` where nothing was measured.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct ladder_chart_t {
+    /// each column's slowest probe, ms
+    pub delay: Vec<i32>,
+    /// tenths of a Mbps; empty for a result from before rates were kept
+    pub down: Vec<i32>,
+    pub up: Vec<i32>,
+    /// the columns where each step after the first begins
+    pub marks: Vec<i32>,
+    /// each step's kind
+    pub kinds: Vec<String>,
+}
+
+/// A finished load ladder run: what the screen says comes from these findings.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct ladder_result_t {
+    pub id: i64,
+    pub plan: String,
+    /// why it ended early
+    pub aborted: Option<String>,
+    pub no_baseline: bool,
+    pub idle_jitter: bool,
+    /// 0 = none
+    pub first_slow_step: i32,
+    pub recovered: Option<bool>,
+    pub recovery_ms: Option<i64>,
+    pub queued_steps: Vec<i32>,
+    pub unloaded_steps: Vec<i32>,
+    /// load steps whose probes went mostly unanswered: no baseline needed
+    pub unresponsive_steps: Vec<i32>,
+    /// every load step judged slower
+    pub slow_steps: Vec<i32>,
+    pub steps: Vec<ladder_step_t>,
+    pub counter_bytes: Option<i64>,
+    pub notes: Vec<String>,
+    pub chart: Option<ladder_chart_t>,
+    /// where it ran, as the device saw it (no place names)
+    pub band: String,
+    pub pci: Option<i64>,
+    /// the last run like it (same plan and steps), for a comparison; its own `prev` is empty
+    pub prev: Option<Box<ladder_result_t>>,
+}
+
+/// The load ladder page.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct ladder_t {
+    /// the start request is out (the core looks at other traffic for 3 s first)
+    pub starting: bool,
+    pub running: bool,
+    pub stopping: bool,
+    /// 0 picking a node, then 1.. (5 steps; 4 in a run from an older core)
+    pub step: i32,
+    /// what the step loads
+    pub kind: String,
+    pub now_ms: Option<i32>,
+    pub down_mbps: f64,
+    pub up_mbps: f64,
+    pub used_bytes: i64,
+    /// reaction time per read while running
+    pub curve: Vec<i32>,
+    /// the core restarted during a run
+    pub unfinished: bool,
+    /// a run ended and the result screen has not been left yet
+    pub show_result: bool,
+    /// the core's refusal code
+    pub start_error: String,
+    pub result: Option<ladder_result_t>,
+    /// the kept-runs list is open
+    pub browsing: bool,
+    /// newest first, without charts
+    pub history: Vec<ladder_result_t>,
+    /// the result shown is a kept one opened from the list
+    pub viewing: bool,
+}

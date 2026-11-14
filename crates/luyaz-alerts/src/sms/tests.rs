@@ -1033,3 +1033,4 @@ fn a_rollback_alert_passes_the_day_limit_but_not_the_hour_limit() {
     let again = format!("{full}{}\t9\tship-conn-rollback\tsent\n", now - 60);
     assert!(!rate_ok(&again, "ship-conn-rollback", now));
 }
+

@@ -96,6 +96,9 @@ pub struct Model {
     /// the v2 engine's fields, None from an old core
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub st_v2: Option<speedtest_v2_t>,
+    /// the load ladder page
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ladder: Option<ladder_t>,
 
     pub agent_health: agent_health_t,
     pub scenario: scenario_status_t,
